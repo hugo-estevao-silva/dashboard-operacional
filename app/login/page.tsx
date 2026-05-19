@@ -12,23 +12,43 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
 
   async function fazerLogin(
-    e: React.FormEvent
-  ) {
+  e: React.FormEvent
+) {
+  e.preventDefault();
 
-    e.preventDefault();
-
-    const { error } = await supabase.auth.signInWithPassword({
+  const { error } =
+    await supabase.auth.signInWithPassword({
       email,
       password: senha,
     });
 
-    if (error) {
-      alert("E-mail ou senha inválidos");
+  if (error) {
+    alert("E-mail ou senha inválidos");
+    return;
+  }
+
+  // espera a sessão existir antes de navegar
+  let tentativas = 0;
+
+  while (tentativas < 10) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session) {
+      router.replace("/dashboard");
       return;
     }
 
-    router.push("/dashboard");
+    tentativas++;
+
+    await new Promise(resolve =>
+      setTimeout(resolve, 200)
+    );
   }
+
+  alert("Não foi possível iniciar sessão.");
+}
 
   return (
 

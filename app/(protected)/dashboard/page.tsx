@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 export default function Home() {
   
   const [now, setNow] = useState(Date.now());
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [ordenacao, setOrdenacao] = useState("nome");
+  const [filtroStatus, setFiltroStatus] = useState("")
+  const [ordenacaoTempo, setOrdenacaoTempo] = useState("maior")
   const [busca, setBusca] = useState("");
   const [somenteCriticos, setSomenteCriticos] = useState(false);
-  const [ocultarOffline, setOcultarOffline] = useState(false);
+  const [mostrarDeslogados, setMostrarDeslogados] = useState(false)
   const router = useRouter();
-  const [carregando, setCarregando] = useState(true);
 
   function formatarTempo(dataInicio: string) {
 
@@ -62,26 +63,29 @@ export default function Home() {
     setUsuarios(data);
   }
 
-useEffect(() => {
+  async function alterarStatus(
+  id: number,
+  novoStatus: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("userChatguru")
+    .update({
+      user_status: novoStatus
+    })
+    .eq("user_id_chatguru", id)
 
-  async function verificarLogin() {
+    .select();
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  console.log("Resultado:", data);
+  console.log("Erro:", error);
 
-    if (!session) {
-
-      router.push("/login");
-      return;
-    }
-
-    setCarregando(false);
+  if (error) {
+    alert(`Erro: ${error.message}`);
+    return;
   }
 
-  verificarLogin();
-
-}, [router]);
+  buscarUsuarios();
+}
 
 useEffect(() => {
 
@@ -109,11 +113,26 @@ const usuariosFiltrados = usuarios.filter((usuario) => {
     return false;
   }
 
+  const usuariosDeslogados = [
+    "Offline",
+    "Férias",
+    "Atestado"
+  ];
+
   if (
-  ocultarOffline &&
-  usuario.user_status === "Offline"
+    !mostrarDeslogados &&
+    usuariosDeslogados.includes(
+      usuario.user_status
+    )
   ) {
-  return false;
+    return false;
+  }
+
+  if (
+    filtroStatus &&
+    usuario.user_status !== filtroStatus
+  ) {
+    return false;
   }
 
   if (!somenteCriticos) {
@@ -134,41 +153,76 @@ const usuariosFiltrados = usuarios.filter((usuario) => {
     (agora.getTime() - inicio.getTime()) / 1000 / 60;
 
   const banheiroCritico =
-    usuario.user_status === "Pausa banheiro" &&
+    usuario.user_status === "Pausa Banheiro" &&
     minutos > 15;
 
   const almocoCritico =
     usuario.user_status === "Almoço" &&
     minutos > 120;
 
-  return banheiroCritico || almocoCritico;
+  const callCritico =
+    usuario.user_status === "Call" &&
+    minutos > 60;
+
+
+  return banheiroCritico || almocoCritico || callCritico;
 });
 
 const usuariosOrdenados = [...usuariosFiltrados].sort((a, b) => {
 
+  let resultado = 0;
+
   switch (ordenacao) {
 
     case "nome":
-      return a.user_name.localeCompare(b.user_name);
+      resultado = a.user_name.localeCompare(
+        b.user_name
+      );
+      break;
 
     case "maisChats":
-      return (
+      resultado =
         (b.in_progress_chats_count || 0) -
-        (a.in_progress_chats_count || 0)
-      );
+        (a.in_progress_chats_count || 0);
+      break;
 
     case "menosChats":
-      return (
+      resultado =
         (a.in_progress_chats_count || 0) -
-        (b.in_progress_chats_count || 0)
-      );
-
-    case "status":
-      return a.user_status.localeCompare(b.user_status);
+        (b.in_progress_chats_count || 0);
+      break;
 
     default:
-      return 0;
+      resultado = 0;
   }
+
+  // Se houver empate, usa tempo
+  if (resultado === 0) {
+
+    if (
+      a.status_started_at &&
+      b.status_started_at
+    ) {
+
+      const tempoA =
+        new Date(
+          a.status_started_at
+        ).getTime();
+
+      const tempoB =
+        new Date(
+          b.status_started_at
+        ).getTime();
+
+      return ordenacaoTempo === "maior"
+        ? tempoA - tempoB
+        : tempoB - tempoA;
+    }
+
+  }
+
+  return resultado;
+
 });
 
 function obterClasseStatus(usuario: any) {
@@ -207,9 +261,19 @@ function obterClasseStatus(usuario: any) {
   }
 
   // BANHEIRO
-  if (usuario.user_status === "Pausa banheiro") {
+  if (usuario.user_status === "PAUSA BANHEIRO") {
 
     if (minutos > 15) {
+      return "bg-red-200 text-red-900";
+    }
+
+    return "bg-blue-100 text-blue-700";
+  }
+
+  // Call
+  if (usuario.user_status === "Call") {
+
+    if (minutos > 60) {
       return "bg-red-200 text-red-900";
     }
 
@@ -228,7 +292,11 @@ const totalAlmoco = usuarios.filter(
 ).length;
 
 const totalBanheiro = usuarios.filter(
-  (u) => u.user_status === "Pausa banheiro"
+  (u) => u.user_status === "Banheiro"
+).length;
+
+const totalCall = usuarios.filter(
+  (u) => u.user_status === "Call"
 ).length;
 
 const totalAtendimento = usuarios.filter(
@@ -279,6 +347,28 @@ const alertasAlmoco = usuarios.filter((usuario) => {
 
 }).length;
 
+const alertasCall = usuarios.filter((usuario) => {
+
+  if (
+    usuario.user_status !== "Call" ||
+    !usuario.status_started_at
+  ) {
+    return false;
+  }
+
+  const inicio = new Date(usuario.status_started_at);
+
+  inicio.setHours(inicio.getHours() - 3);
+
+  const agora = new Date();
+
+  const minutos =
+    (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+  return minutos > 60;
+
+}).length;
+
 function linhaCritica(usuario: any) {
 
   if (!usuario.status_started_at) {
@@ -295,28 +385,24 @@ function linhaCritica(usuario: any) {
     (agora.getTime() - inicio.getTime()) / 1000 / 60;
 
   const banheiroCritico =
-    usuario.user_status === "Pausa banheiro" &&
+    usuario.user_status === "Banheiro" &&
     minutos > 15;
 
   const almocoCritico =
     usuario.user_status === "Almoço" &&
     minutos > 120;
 
-  if (banheiroCritico || almocoCritico) {
+  const callCritico =
+    usuario.user_status === "Call" &&
+    minutos > 60;
+
+  if (banheiroCritico || callCritico) {
     return "bg-red-50 border-l-4 border-red-500";
   }
 
   return "";
 }
 
-if (carregando) {
-
-  return (
-    <div className="p-10 text-black">
-      Carregando...
-    </div>
-  );
-}
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
@@ -354,8 +440,20 @@ if (carregando) {
             Pausa banheiro
           </h2>
 
-          <p className="text-4xl font-bold text-blue-600 mt-2">
+          <p className="text-4xl font-bold text-yellow-600 mt-2">
           {totalBanheiro}
+          </p>
+
+        </div>
+
+        <div className="bg-white rounded-2xl shadow p-6">
+
+          <h2 className="text-gray-500 text-sm">
+            Call
+          </h2>
+
+          <p className="text-4xl font-bold text-blue-600 mt-2">
+          {totalCall}
           </p>
 
         </div>
@@ -379,17 +477,21 @@ if (carregando) {
           </h2>
 
           <p className="text-4xl font-bold text-red-600 mt-2">
-            {alertasBanheiro + alertasAlmoco}
+            {alertasBanheiro + alertasAlmoco + alertasCall}
           </p>
 
           <div className="mt-4 text-sm text-gray-600">
 
             <p>
-              🚽 Banheiro: {alertasBanheiro}
+              🚽 Pausa banheiro: {alertasBanheiro}
             </p>
 
             <p>
               🍽️ Almoço: {alertasAlmoco}
+            </p>
+
+            <p>
+              🍽️ Call: {alertasCall}
             </p>
 
           </div>
@@ -403,22 +505,6 @@ if (carregando) {
         <h1 className="text-3xl font-bold text-black">
           Dashboard Operacional
         </h1>
-
-        <button
-          onClick={logout}
-          className="
-            bg-red-600
-            hover:bg-red-700
-              text-white
-              font-bold
-              px-4
-              py-2
-              rounded-lg
-              transition-colors
-          "
-        >
-          Sair
-        </button>
 
       </div>
 
@@ -454,22 +540,27 @@ if (carregando) {
           <label className="flex items-center gap-2 text-black">
 
           <input
-            type="checkbox"
-            checked={ocultarOffline}
-            onChange={(e) =>
-              setOcultarOffline(e.target.checked)
-            }
-          />
+              type="checkbox"
+              checked={mostrarDeslogados}
+              onChange={(e) =>
+                setMostrarDeslogados(
+                  e.target.checked
+                )
+              }
+            />
 
-           Ocultar offline
-
-          </label>
+              Mostrar deslogados
+            </label>
 
           <select
            value={ordenacao}
            onChange={(e) => setOrdenacao(e.target.value)}
            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
           >
+            <option value="">
+              Selecione um Filtro
+            </option>
+
 
             <option value="nome">
               Nome A-Z
@@ -483,8 +574,37 @@ if (carregando) {
               Menos chats
             </option>
 
-            <option value="status">
-              Status
+          </select>
+
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+          >
+            <option value="">Todos status</option>
+
+            <option value="Disponível">DISPONÍVEL</option>
+            <option value="Almoço">ALMOÇO</option>
+            <option value="Call">CALL</option>
+            <option value="Banheiro">BANHEIRO</option>
+            <option value="Offline">OFFLINE</option>
+            <option value="Férias">FÉRIAS</option>
+            <option value="Atestado">ATESTADO</option>
+
+          </select>
+
+          <select
+            value={ordenacaoTempo}
+            onChange={(e) => setOrdenacaoTempo(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+          >
+            
+            <option value="maior">
+              Mais tempo
+            </option>
+
+            <option value="menor">
+              Menos tempo
             </option>
 
           </select>
@@ -541,17 +661,69 @@ if (carregando) {
                     {usuario.user_name}
                   </td>
 
-                  <td className="p-4">
+                  <td>
+                    <select
+                      value={usuario.user_status}
+                      onChange={(e) =>
+                        alterarStatus(
+                        usuario.user_id_chatguru,
+                        e.target.value
+                      )
+                      }
+                      className={`rounded-lg px-3 py-2 font-semibold text-black border-none
 
-                    <span
-                      className={`
-                        px-3 py-1 rounded-full text-sm font-medium
-                        ${obterClasseStatus(usuario)}
+                        ${
+                          usuario.user_status === "Disponível"
+                            ? "bg-green-200"
+
+                          : usuario.user_status === "Offline"
+                            ? "bg-gray-300"
+
+                          : [
+                              "Almoço",
+                              "Call",
+                              "Banheiro",
+                              "Férias",
+                              "Atestado"
+                            ].includes(usuario.user_status)
+                            ? (
+                                usuario.tempoPausaCritico
+                                  ? "bg-red-300"
+                                  : "bg-yellow-200"
+                              )
+
+                          : "bg-white"
+                        }
                       `}
                     >
-                      {usuario.user_status}
-                    </span>
+                      <option value="Disponível">
+                        DISPONÍVEL
+                      </option>
 
+                      <option value="Almoço">
+                        ALMOÇO
+                      </option>
+
+                      <option value="Call">
+                        CALL
+                      </option>
+
+                      <option value="Banheiro">
+                        PAUSA BANHEIRO
+                      </option>
+
+                      <option value="Offline">
+                        OFFLINE
+                      </option>
+
+                      <option value="Férias">
+                        FÉRIAS
+                      </option>
+
+                      <option value="Atestado">
+                        ATESTADO
+                      </option>
+                    </select>
                   </td>
 
                   <td className="text-center p-4 font-mono">
