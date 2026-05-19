@@ -92,7 +92,13 @@ export default function Atendimento() {
 
         // verifica login
 
-        const { data, error } = await supabase.from("atendimento").select("*");
+        const { data, error } = await supabase
+        .from("atendimento")
+        .select("*")
+        .neq(
+            "status_do_atendimento",
+            "Finalizado"
+        );
 
         console.log("Dados:", data);
         console.log("Erro:", error);
