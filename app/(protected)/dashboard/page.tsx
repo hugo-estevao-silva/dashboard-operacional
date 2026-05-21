@@ -152,8 +152,8 @@ const usuariosFiltrados = usuarios.filter((usuario) => {
   const minutos =
     (agora.getTime() - inicio.getTime()) / 1000 / 60;
 
-  const banheiroCritico =
-    usuario.user_status === "Pausa Banheiro" &&
+  const pausaCritico =
+    usuario.user_status === "Pausa" &&
     minutos > 15;
 
   const almocoCritico =
@@ -165,7 +165,7 @@ const usuariosFiltrados = usuarios.filter((usuario) => {
     minutos > 60;
 
 
-  return banheiroCritico || almocoCritico || callCritico;
+  return pausaCritico || almocoCritico || callCritico;
 });
 
 const usuariosOrdenados = [...usuariosFiltrados].sort((a, b) => {
@@ -260,8 +260,8 @@ function obterClasseStatus(usuario: any) {
     return "bg-yellow-100 text-yellow-700";
   }
 
-  // BANHEIRO
-  if (usuario.user_status === "PAUSA BANHEIRO") {
+  // PAUSA
+  if (usuario.user_status === "Pausa") {
 
     if (minutos > 15) {
       return "bg-red-200 text-red-900";
@@ -291,8 +291,8 @@ const totalAlmoco = usuarios.filter(
   (u) => u.user_status === "Almoço"
 ).length;
 
-const totalBanheiro = usuarios.filter(
-  (u) => u.user_status === "Banheiro"
+const totalPausa = usuarios.filter(
+  (u) => u.user_status === "Pausa"
 ).length;
 
 const totalCall = usuarios.filter(
@@ -303,10 +303,10 @@ const totalAtendimento = usuarios.filter(
   (u) => (u.in_progress_chats_count || 0) > 0
 ).length;
 
-const alertasBanheiro = usuarios.filter((usuario) => {
+const alertasPausa = usuarios.filter((usuario) => {
 
   if (
-    usuario.user_status !== "Pausa banheiro" ||
+    usuario.user_status !== "Pausa" ||
     !usuario.status_started_at
   ) {
     return false;
@@ -384,9 +384,9 @@ function linhaCritica(usuario: any) {
   const minutos =
     (agora.getTime() - inicio.getTime()) / 1000 / 60;
 
-  const banheiroCritico =
-    usuario.user_status === "Banheiro" &&
-    minutos > 15;
+  const pausaCritico =
+    usuario.user_status === "Pausa" &&
+    minutos > 10;
 
   const almocoCritico =
     usuario.user_status === "Almoço" &&
@@ -396,7 +396,7 @@ function linhaCritica(usuario: any) {
     usuario.user_status === "Call" &&
     minutos > 60;
 
-  if (banheiroCritico || callCritico) {
+  if (pausaCritico || callCritico || almocoCritico) {
     return "bg-red-50 border-l-4 border-red-500";
   }
 
@@ -437,11 +437,11 @@ function linhaCritica(usuario: any) {
         <div className="bg-white rounded-2xl shadow p-6">
 
           <h2 className="text-gray-500 text-sm">
-            Pausa banheiro
+            Pausa
           </h2>
 
           <p className="text-4xl font-bold text-yellow-600 mt-2">
-          {totalBanheiro}
+          {totalPausa}
           </p>
 
         </div>
@@ -477,13 +477,13 @@ function linhaCritica(usuario: any) {
           </h2>
 
           <p className="text-4xl font-bold text-red-600 mt-2">
-            {alertasBanheiro + alertasAlmoco + alertasCall}
+            {alertasPausa + alertasAlmoco + alertasCall}
           </p>
 
           <div className="mt-4 text-sm text-gray-600">
 
             <p>
-              🚽 Pausa banheiro: {alertasBanheiro}
+              ⏸️ Pausa: {alertasPausa}
             </p>
 
             <p>
@@ -491,7 +491,7 @@ function linhaCritica(usuario: any) {
             </p>
 
             <p>
-              🍽️ Call: {alertasCall}
+              🎧 Call: {alertasCall}
             </p>
 
           </div>
@@ -586,7 +586,7 @@ function linhaCritica(usuario: any) {
             <option value="Disponível">DISPONÍVEL</option>
             <option value="Almoço">ALMOÇO</option>
             <option value="Call">CALL</option>
-            <option value="Banheiro">BANHEIRO</option>
+            <option value="Pausa">PAUSA</option>
             <option value="Offline">OFFLINE</option>
             <option value="Férias">FÉRIAS</option>
             <option value="Atestado">ATESTADO</option>
@@ -682,7 +682,7 @@ function linhaCritica(usuario: any) {
                           : [
                               "Almoço",
                               "Call",
-                              "Banheiro",
+                              "Pausa",
                               "Férias",
                               "Atestado"
                             ].includes(usuario.user_status)
@@ -708,8 +708,8 @@ function linhaCritica(usuario: any) {
                         CALL
                       </option>
 
-                      <option value="Banheiro">
-                        PAUSA BANHEIRO
+                      <option value="Pausa">
+                        PAUSA
                       </option>
 
                       <option value="Offline">
