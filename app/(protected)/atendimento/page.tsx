@@ -14,72 +14,131 @@ export default function Atendimento() {
     const [atendimentos, setAtendimentos] = useState<any[]>([]);
     const [agora, setAgora] = useState(Date.now());
     const [expandido, setExpandido] = useState<number | null>(null);
+    const [analistas, setAnalistas] = useState<any[]>([]);
+    
   // ======================
   // CALCULAR TEMPO
   // ======================
 
-    function calcularTempo(item: any) {
+    function calcularTempoTotal(item: any) {
 
-        let dataInicio = null;
-
-        if (
-            item.status_do_atendimento ===
-            "Em atendimento"
-        ) {
-
-            dataInicio =
-            item.inicio_do_atendimento;
-
-        } else if (
-            item.status_do_atendimento ===
-            "Aguardando"
-        ) {
-
-            dataInicio =
-            item.hora_inicio_fila;
-
-        } else {
-
-            dataInicio =
-            item.created_at;
-
-        }
-
-        if (!dataInicio) {
+        if (!item.inicio_do_atendimento_bot) {
             return "--:--:--";
         }
 
-        const inicio =
-            new Date(dataInicio).getTime();
+        const inicio = new Date(
+            item.inicio_do_atendimento_bot
+        ).getTime();
 
-        const diferenca =
-            agora - inicio;
+        const diferenca = agora - inicio;
 
-        const horas =
-            Math.floor(
+        const horas = Math.floor(
             diferenca / (1000 * 60 * 60)
-            );
+        );
 
-        const minutos =
-            Math.floor(
-            (diferenca %
-                (1000 * 60 * 60)) /
+        const minutos = Math.floor(
+            (diferenca % (1000 * 60 * 60)) /
             (1000 * 60)
-            );
+        );
 
-        const segundos =
-            Math.floor(
-            (diferenca %
-                (1000 * 60)) /
+        const segundos = Math.floor(
+            (diferenca % (1000 * 60)) /
             1000
-            );
+        );
 
-        return `${String(horas)
-            .padStart(2, "0")}:${String(
-            minutos
-        ).padStart(2, "0")}:${String(
-            segundos
-        ).padStart(2, "0")}`;
+        return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+    }
+
+    function calcularTempoAtendimento(item: any) {
+
+        if (!item.inicio_do_atendimento) {
+            return "--:--:--";
+        }
+
+        const inicio = new Date(
+            item.inicio_do_atendimento
+        ).getTime();
+
+        const diferenca = agora - inicio;
+
+        const horas = Math.floor(
+            diferenca / (1000 * 60 * 60)
+        );
+
+        const minutos = Math.floor(
+            (diferenca % (1000 * 60 * 60)) /
+            (1000 * 60)
+        );
+
+        const segundos = Math.floor(
+            (diferenca % (1000 * 60)) /
+            1000
+        );
+
+        return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+    }
+
+
+    async function atualizarAnalista(
+        atendimentoId: number,
+        analistaId: string
+    ) {
+
+        const analistaSelecionado = analistas.find(
+            (a) =>
+                a.user_id_chatguru === analistaId
+        );
+
+        console.log("ANALISTA ID:", analistaId);
+
+        console.log("ANALISTAS:", analistas);
+
+        console.log("SELECIONADO:", analistaSelecionado);
+
+
+        if (!analistaSelecionado) {
+            return;
+        }
+
+        const { data, error } = await supabase
+        .from("atendimento")
+        .update({
+
+            id_analista_atual:
+                analistaSelecionado.user_id_chatguru,
+
+            analista_responsavel_atual:
+                analistaSelecionado.user_name
+
+        })
+        .eq("id", atendimentoId)
+        .select();
+
+        if (error) {
+
+            console.error(error);
+
+            alert("Erro ao atualizar analista");
+
+            return;
+        }
+
+        // Atualiza a tabela localmente
+        setAtendimentos((prev) =>
+            prev.map((item) =>
+                item.id === atendimentoId
+                    ? {
+                        ...item,
+
+                        id_analista_atual:
+                            analistaSelecionado.user_id_chatguru,
+
+                        analista_responsavel_atual:
+                            analistaSelecionado.user_name
+                    }
+                    : item
+            )
+        );
     }
 
   // ======================
@@ -88,38 +147,51 @@ export default function Atendimento() {
 
     useEffect(() => {
 
-        async function carregar() {
+        async function carregar(): Promise<void> {
 
-        // verifica login
+            const { data, error } = await supabase
+                .from("atendimento")
+                .select("*")
+                .neq(
+                    "status_do_atendimento",
+                    "Finalizado"
+                );
 
-        const { data, error } = await supabase
-        .from("atendimento")
-        .select("*")
-        .neq(
-            "status_do_atendimento",
-            "Finalizado"
-        );
+            if (!error) {
+                setAtendimentos(data || []);
+            }
 
-        console.log("Dados:", data);
-        console.log("Erro:", error);
-
-        if (!error) {
-
-            console.log("Dados recebidos:", data);
-            console.log("Erro:", error);
-
-            setAtendimentos(
-            data || []
-            );
-
+            setCarregando(false);
         }
 
+        async function buscarAnalistas() {
 
-        setCarregando(false);
+            const { data, error } = await supabase
+                .from("userChatguru")
+                .select(`
+                    user_id_chatguru,
+                    user_name
+                `)
+                .order("user_name");
 
+            if (!error) {
+                setAnalistas(data || []);
+            }
         }
 
+        // primeira carga
         carregar();
+
+        buscarAnalistas();
+
+        // atualização automática
+        const interval = setInterval(() => {
+
+            carregar();
+
+        }, 5000);
+
+        return () => clearInterval(interval);
 
     }, []);
 
@@ -163,6 +235,57 @@ export default function Atendimento() {
     );
 
   }
+
+
+    async function buscarAnalistas() {
+
+        const { data, error } = await supabase
+            .from("userChatguru")
+            .select(`
+                user_id_chatguru,
+                user_name
+            `)
+            .order("user_name");
+
+        if (!error) {
+            setAnalistas(data || []);
+        }
+    }
+
+
+
+    async function atualizarAtendimento(
+        id: number,
+        campo: string,
+        valor: string
+    ) {
+
+        const { error } = await supabase
+            .from("atendimento")
+            .update({
+                [campo]: valor
+            })
+            .eq("id", id);
+
+        if (error) {
+            console.error(error);
+            alert("Erro ao atualizar atendimento");
+            return;
+        }
+
+        // Atualiza a lista local
+        setAtendimentos((prev) =>
+            prev.map((item) =>
+                item.id === id
+                    ? {
+                        ...item,
+                        [campo]: valor
+                    }
+                    : item
+            )
+        );
+    }
+
 
   // ======================
   // TELA
@@ -213,7 +336,11 @@ export default function Atendimento() {
                         </th>
 
                         <th className="text-center px-5 py-4">
-                        Tempo
+                        Tempo Total
+                        </th>
+
+                        <th className="text-center px-5 py-4">
+                            Tempo Atendimento
                         </th>
 
                         <th className="text-center px-5 py-4">
@@ -249,15 +376,83 @@ export default function Atendimento() {
                                 </td>
 
                                 <td className="text-center">
-                                    {item.status_do_atendimento}
+
+                                    <select
+                                        value={item.status_do_atendimento || ""}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) =>
+                                            atualizarAtendimento(
+                                                item.id,
+                                                "status_do_atendimento",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="border rounded px-2 py-1 bg-white"
+                                    >
+
+                                        <option value="Aberto">
+                                            Aberto
+                                        </option>
+
+                                        <option value="Fila de Atendimento">
+                                            Fila de atendimento
+                                        </option>
+
+                                        <option value="Em atendimento">
+                                            Em atendimento
+                                        </option>
+
+                                        <option value="Aguardando">
+                                            Aguardando
+                                        </option>
+
+                                        <option value="Finalizado">
+                                            Finalizado
+                                        </option>
+
+                                    </select>
+
                                 </td>
 
                                 <td className="text-center">
-                                    {calcularTempo(item)}
+                                    {calcularTempoTotal(item)}
                                 </td>
 
                                 <td className="text-center">
-                                    {item.analista_responsavel_atual || "-"}
+                                    {calcularTempoAtendimento(item)}
+                                </td>
+
+                                <td className="text-center">
+
+                                    <select
+                                        value={String(item.id_analista_atual || "")}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) =>
+                                            atualizarAnalista(
+                                                item.id,
+                                                e.target.value
+                                            )
+                                        }
+                                        className="border rounded px-2 py-1 bg-white"
+                                    >
+
+                                        <option value="">
+                                            Selecione
+                                        </option>
+
+                                        {analistas.map((analista) => (
+
+                                            <option
+                                                key={analista.user_id_chatguru}
+                                                value={String(analista.user_id_chatguru)}
+                                            >
+                                                {analista.user_name}
+                                            </option>
+
+                                        ))}
+
+                                    </select>
+
                                 </td>
 
                                 <td className="text-center">
@@ -272,6 +467,10 @@ export default function Atendimento() {
                                         className="bg-gray-50 px-6 py-4 text-black"
                                     >
                                         <div className="grid grid-cols-2 gap-4">
+
+                                            <div>
+                                                <b>ID:</b> {item.id}
+                                            </div>
 
                                             <div>
                                             <b>Celular:</b> {item.celular}
