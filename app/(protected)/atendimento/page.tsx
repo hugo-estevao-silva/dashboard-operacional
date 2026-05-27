@@ -15,6 +15,7 @@ export default function Atendimento() {
     const [agora, setAgora] = useState(Date.now());
     const [expandido, setExpandido] = useState<number | null>(null);
     const [analistas, setAnalistas] = useState<any[]>([]);
+    const [filtroAnalista, setFiltroAnalista] = useState("");
     
   // ======================
   // CALCULAR TEMPO
@@ -249,14 +250,31 @@ export default function Atendimento() {
   // ======================
 
   const atendimentosFiltrados =
-    atendimentos.filter(
-      (item) =>
-        item.cliente
-          ?.toLowerCase()
-          .includes(
-            busca.toLowerCase()
-          )
-    );
+    atendimentos.filter((item) => {
+
+        const buscaFormatada =
+            busca.toLowerCase();
+
+        const nomeMatch =
+            item.cliente
+                ?.toLowerCase()
+                .includes(buscaFormatada);
+
+        const celularMatch =
+            item.celular
+                ?.toString()
+                .includes(busca);
+
+        const analistaMatch =
+            !filtroAnalista ||
+            String(item.id_analista_atual) ===
+            String(filtroAnalista);
+
+        return (
+            (nomeMatch || celularMatch) &&
+            analistaMatch
+        );
+    });
 
   // ======================
   // LOADING
@@ -339,7 +357,7 @@ export default function Atendimento() {
         <div className="mb-6 flex items-center gap-4">
             <input
             type="text"
-            placeholder="Buscar cliente..."
+            placeholder="Buscar cliente por nome ou número..."
             value={busca}
             onChange={(e)=>
             setBusca(
@@ -347,7 +365,41 @@ export default function Atendimento() {
             )
             }
             className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72"/>
+       
+                <select
+                    value={filtroAnalista}
+                    onChange={(e) =>
+                        setFiltroAnalista(e.target.value)
+                    }
+                    className="
+                        border border-gray-300
+                        rounded-lg
+                        px-4 py-2
+                        text-black
+                        bg-white
+                        shadow-sm
+                    "
+                >
+
+                    <option value="">
+                        Todos analistas
+                    </option>
+
+                    {analistas.map((analista) => (
+
+                        <option
+                            key={analista.user_id_chatguru}
+                            value={analista.user_id_chatguru}
+                        >
+                            {analista.user_name}
+                        </option>
+
+                    ))}
+
+                </select>
+       
         </div>
+
         <div
             className="
             bg-white
