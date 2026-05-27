@@ -51,12 +51,12 @@ export default function Atendimento() {
 
     function calcularTempoAtendimento(item: any) {
 
-        if (!item.inicio_do_atendimento) {
+        if (!item.inicio_do_atendimento_humano) {
             return "--:--:--";
         }
 
         const inicio = new Date(
-            item.inicio_do_atendimento
+            item.inicio_do_atendimento_humano
         ).getTime();
 
         const diferenca = agora - inicio;
@@ -76,6 +76,42 @@ export default function Atendimento() {
         );
 
         return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+    }
+
+    function classeTempoAtendimento(item: any) {
+
+        if (
+            item.status_do_atendimento !==
+            "Em atendimento"
+        ) {
+            return "";
+        }
+
+        if (!item.inicio_do_atendimento_humano) {
+            return "";
+        }
+
+        const inicio = new Date(
+            item.inicio_do_atendimento_humano
+        ).getTime();
+
+        const diferencaMinutos =
+            (agora - inicio) / 1000 / 60;
+
+        if (diferencaMinutos > 30) {
+
+            return "bg-red-100 text-red-700 font-bold";
+
+        } else if (
+            diferencaMinutos > 25 &&
+            diferencaMinutos <= 30
+        ) {
+
+            return "bg-yellow-100 text-yellow-800";
+
+        }
+
+        return "";
     }
 
 
@@ -418,7 +454,12 @@ export default function Atendimento() {
                                     {calcularTempoTotal(item)}
                                 </td>
 
-                                <td className="text-center">
+                                <td
+                                    className={`
+                                        text-center
+                                        ${classeTempoAtendimento(item)}
+                                    `}
+                                >
                                     {calcularTempoAtendimento(item)}
                                 </td>
 
