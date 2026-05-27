@@ -126,39 +126,49 @@ export default function Atendimento() {
                 a.user_id_chatguru === analistaId
         );
 
-        console.log("ANALISTA ID:", analistaId);
-
-        console.log("ANALISTAS:", analistas);
-
-        console.log("SELECIONADO:", analistaSelecionado);
-
+        const atendimentoAtual = atendimentos.find(
+            (a) => a.id === atendimentoId
+        );
 
         if (!analistaSelecionado) {
             return;
         }
 
-        const { data, error } = await supabase
-        .from("atendimento")
-        .update({
+            const { data, error } = await supabase
+            .from("atendimento")
+            .update({
+                id_analista_atual:
+                    analistaSelecionado.user_id_chatguru,
 
-            id_analista_atual:
-                analistaSelecionado.user_id_chatguru,
-
-            analista_responsavel_atual:
-                analistaSelecionado.user_name
-
-        })
-        .eq("id", atendimentoId)
-        .select();
+                analista_responsavel_atual:
+                    analistaSelecionado.user_name
+            })
+            .eq("id", atendimentoId)
+            .select();
 
         if (error) {
-
             console.error(error);
-
             alert("Erro ao atualizar analista");
-
             return;
         }
+
+        // POST PARA WEBHOOK
+        await fetch("https://atendimento.chatguru.com.br/webhook/dashboard-atendimento-troca-analista", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                atendimento_id: atendimentoId,
+                chat_id: atendimentoAtual?.chat_id,
+                celular: atendimentoAtual?.celular,
+                id_analista_atual:
+                    analistaSelecionado.user_id_chatguru,
+                analista_responsavel_atual:
+                    analistaSelecionado.user_name,
+                evento: "troca_analista"
+            })
+        });
 
         // Atualiza a tabela localmente
         setAtendimentos((prev) =>
