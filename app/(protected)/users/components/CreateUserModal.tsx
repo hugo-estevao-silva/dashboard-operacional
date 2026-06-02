@@ -19,6 +19,11 @@ const departmentOptions = [
   "N1 Dúvidas",
   "N1 Quarentena",
   "N1 Financeiro",
+  "Escalation Premium",
+  "Escalation Problemas",
+  "Escalation Dúvidas",
+  "Escalation ChatBot",
+  "Escalation WhatsApp",
 ];
 
 export default function CreateUserModal({
@@ -207,24 +212,23 @@ async function handleSubmit() {
 }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-start z-50 p-4">
 
-      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl">
+      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="bg-emerald-700 text-white px-6 py-4 flex justify-between">
-
+        <div className="bg-emerald-700 text-white px-6 py-4 flex justify-between shrink-0">
           <h2 className="font-semibold text-lg">
             Novo Usuário
           </h2>
 
-          <button onClick={onClose} className= "cursor-pointer" >
+          <button onClick={onClose} className="cursor-pointer">
             ✕
           </button>
-
         </div>
 
-        <div className="p-6 space-y-5">
+        {/* Corpo rolável */}
+        <div className="p-6 space-y-5 overflow-y-auto">
           <label  className="text-black">
             E-mail*
           </label>
@@ -414,7 +418,8 @@ async function handleSubmit() {
 
         </div>
 
-        <div className="border-t p-4 flex justify-end gap-2">
+        {/* Footer fixo */}
+        <div className="border-t p-4 flex justify-end gap-2 shrink-0 bg-white">
 
           <button
             onClick={onClose}

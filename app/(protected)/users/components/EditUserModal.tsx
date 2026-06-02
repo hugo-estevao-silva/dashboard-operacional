@@ -20,6 +20,11 @@ const departmentOptions = [
   "N1 Dúvidas",
   "N1 Quarentena",
   "N1 Financeiro",
+  "Escalation Premium",
+  "Escalation Problemas",
+  "Escalation Dúvidas",
+  "Escalation ChatBot",
+  "Escalation WhatsApp",
 ];
 
 export default function EditUserModal({
@@ -61,13 +66,13 @@ export default function EditUserModal({
         user_department:
           user.user_department
             ? user.user_department
-                .split(", ")
+              .split(", ")
             : [],
 
         connection_overflow:
           user.connection_overflow
             ? user.connection_overflow
-                .split(", ")
+              .split(", ")
             : [],
 
         nome_do_gestor:
@@ -119,10 +124,10 @@ export default function EditUserModal({
 
     const updated =
       current.includes(value)
-      ? current.filter(
+        ? current.filter(
           item => item !== value
         )
-      : [...current, value];
+        : [...current, value];
 
     setForm({
       ...form,
@@ -247,224 +252,225 @@ export default function EditUserModal({
 
   return (
 
-<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-start z-50 p-4">
 
-<div className="bg-white w-full max-w-2xl rounded-xl shadow-xl">
+      <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
 
-<div className="bg-emerald-700 text-white px-6 py-4 flex justify-between">
+        {/* Header */}
+        <div className="bg-emerald-700 text-white px-6 py-4 flex justify-between shrink-0">
+          <h2 className="font-semibold text-lg">
+            Novo Usuário
+          </h2>
 
-<h2 className="font-semibold text-lg">
-Editar Usuário
-</h2>
+          <button onClick={onClose} className="cursor-pointer">
+            ✕
+          </button>
+        </div>
 
-<button onClick={onClose} className= "cursor-pointer">
-✕
-</button>
+        {/* Corpo rolável */}
+        <div className="p-6 space-y-5 overflow-y-auto">
 
-</div>
+          <label className="text-black">E-mail</label>
+          <input
+            name="user_email"
+            placeholder="E-mail"
+            value={form.user_email}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
 
-<div className="p-6 space-y-5">
+          <label className="text-black">Nome</label>
+          <input
+            name="user_name"
+            placeholder="Nome"
+            value={form.user_name}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
 
-<label  className="text-black">E-mail</label>
-<input
-name="user_email"
-placeholder="E-mail"
-value={form.user_email}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
+          <label className="text-black">User_id</label>
+          <input
+            name="user_id_chatguru"
+            placeholder="User ID"
+            value={form.user_id_chatguru}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
 
-<label  className="text-black">Nome</label>
-<input
-name="user_name"
-placeholder="Nome"
-value={form.user_name}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
+          <label className="text-black">Nível</label>
+          <select
+            name="user_level"
+            value={form.user_level}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          >
+            <option>N1</option>
+            <option>N2</option>
+          </select>
 
-<label  className="text-black">User_id</label>
-<input
-name="user_id_chatguru"
-placeholder="User ID"
-value={form.user_id_chatguru}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
+          <div>
 
-<label  className="text-black">Nível</label>
-<select
-name="user_level"
-value={form.user_level}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
->
-<option>N1</option>
-<option>N2</option>
-</select>
+            <label className="font-medium text-black">
+              Departamento
+            </label>
 
-<div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
 
-<label className="font-medium text-black">
-Departamento
-</label>
+              {departmentOptions.map(item => (
 
-<div className="grid grid-cols-2 gap-2 mt-2">
+                <label
+                  key={item}
+                  className="flex gap-2 text-black"
+                >
 
-{departmentOptions.map(item => (
+                  <input
+                    type="checkbox"
+                    checked={form.user_department.includes(item)}
+                    onChange={() =>
+                      handleCheckbox(
+                        "user_department",
+                        item
+                      )
+                    }
+                  />
 
-<label
-key={item}
-className="flex gap-2 text-black"
->
+                  {item}
 
-<input
-type="checkbox"
-checked={form.user_department.includes(item)}
-onChange={() =>
-handleCheckbox(
-"user_department",
-item
-)
-}
-/>
+                </label>
 
-{item}
+              ))}
 
-</label>
+            </div>
 
-))}
+          </div>
 
-</div>
+          <div>
 
-</div>
+            <label className="font-medium text-black">
+              Atende transbordo de
+            </label>
 
-<div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
 
-<label className="font-medium text-black">
-Atende transbordo de
-</label>
+              {departmentOptions.map(item => (
 
-<div className="grid grid-cols-2 gap-2 mt-2">
+                <label
+                  key={item}
+                  className="flex gap-2 text-black"
+                >
 
-{departmentOptions.map(item => (
+                  <input
+                    type="checkbox"
+                    checked={form.connection_overflow.includes(item)}
+                    onChange={() =>
+                      handleCheckbox(
+                        "connection_overflow",
+                        item
+                      )
+                    }
+                  />
 
-<label
-key={item}
-className="flex gap-2 text-black"
->
+                  {item}
 
-<input
-type="checkbox"
-checked={form.connection_overflow.includes(item)}
-onChange={() =>
-handleCheckbox(
-"connection_overflow",
-item
-)
-}
-/>
+                </label>
 
-{item}
+              ))}
 
-</label>
+            </div>
 
-))}
+          </div>
 
-</div>
+          <label className="text-black"> Nome do Gestor*</label>
+          <input
+            name="nome_do_gestor"
+            placeholder="Nome do gestor"
+            value={form.nome_do_gestor}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
+          <label className="text-black">User_id do Gestor*</label>
+          <input
+            name="gestor_user_id"
+            placeholder="User ID gestor"
+            value={form.gestor_user_id}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
 
-</div>
+          <div className="grid grid-cols-2 gap-4">
 
-<label  className="text-black"> Nome do Gestor*</label>
-<input
-name="nome_do_gestor"
-placeholder="Nome do gestor"
-value={form.nome_do_gestor}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
-<label  className="text-black">User_id do Gestor*</label>
-<input
-name="gestor_user_id"
-placeholder="User ID gestor"
-value={form.gestor_user_id}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
+            <div>
+              <label className="text-black">
+                Horário de inicio do atendimento*
+              </label>
 
-<div className="grid grid-cols-2 gap-4">
+              <input
+                type="time"
+                name="work_start_time"
+                value={form.work_start_time}
+                onChange={handleChange}
+                className="w-full border rounded p-3 text-black"
+              />
+            </div>
 
-  <div>
-    <label className="text-black">
-      Horário de inicio do atendimento*
-    </label>
+            <div>
+              <label className="text-black">
+                Horário de Fim do atendimento*
+              </label>
 
-    <input
-      type="time"
-      name="work_start_time"
-      value={form.work_start_time}
-      onChange={handleChange}
-      className="w-full border rounded p-3 text-black"
-    />
-  </div>
+              <input
+                type="time"
+                name="work_end_time"
+                value={form.work_end_time}
+                onChange={handleChange}
+                className="w-full border rounded p-3 text-black"
+              />
+            </div>
 
-  <div>
-    <label className="text-black">
-      Horário de Fim do atendimento*
-    </label>
+          </div>
 
-    <input
-      type="time"
-      name="work_end_time"
-      value={form.work_end_time}
-      onChange={handleChange}
-      className="w-full border rounded p-3 text-black"
-    />
-  </div>
+          <label className="text-black">Limite de chats simultâneos*</label>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            name="service_max_count"
+            placeholder="Limite de chats"
+            value={form.service_max_count}
+            onChange={handleChange}
+            className="w-full border rounded p-3 text-black"
+          />
 
-</div>
+        </div>
 
-<label  className="text-black">Limite de chats simultâneos*</label>
-<input
-type="number"
-min={0}
-step={1}
-name="service_max_count"
-placeholder="Limite de chats"
-value={form.service_max_count}
-onChange={handleChange}
-className="w-full border rounded p-3 text-black"
-/>
+        {/* Footer fixo */}
+        <div className="border-t p-4 flex justify-end gap-2 shrink-0 bg-white">
 
-</div>
+          <button
+            onClick={onClose}
+            className="border px-4 py-2 rounded text-black cursor-pointer"
+          >
+            Cancelar
+          </button>
 
-<div className="border-t p-4 flex justify-end gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="bg-emerald-700 text-white px-4 py-2 rounded cursor-pointer"
+          >
 
-<button
-onClick={onClose}
-className="border px-4 py-2 rounded text-black cursor-pointer"
->
-Cancelar
-</button>
+            {loading
+              ? "Salvando..."
+              : "Salvar alterações"}
 
-<button
-onClick={handleSubmit}
-disabled={loading}
-className="bg-emerald-700 text-white px-4 py-2 rounded cursor-pointer"
->
+          </button>
 
-{loading
-? "Salvando..."
-: "Salvar alterações"}
+        </div>
 
-</button>
+      </div>
 
-</div>
+    </div>
 
-</div>
-
-</div>
-
-);
+  );
 
 }
