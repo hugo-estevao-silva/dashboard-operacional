@@ -26,11 +26,23 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  
-  const filteredUsers = users.filter((user) =>
-  user.user_name.toLowerCase().includes(search.toLowerCase()) ||
-  user.user_email.toLowerCase().includes(search.toLowerCase())
-);
+  const [managerFilter, setManagerFilter] = useState("");
+
+  const managers = [
+    ...new Set(users.map((u) => u.nome_do_gestor).filter(Boolean)),
+  ].sort();
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.user_name.toLowerCase().includes(search.toLowerCase()) ||
+      user.user_email.toLowerCase().includes(search.toLowerCase());
+
+    const matchesManager =
+      managerFilter === "" ||
+      user.nome_do_gestor === managerFilter;
+
+    return matchesSearch && matchesManager;
+  });
 
 
   async function fetchUsers() {
@@ -52,7 +64,7 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
- async function handleDelete(user: User) {
+  async function handleDelete(user: User) {
 
     const confirmed = confirm(
       `Deseja remover ${user.user_name}?`
@@ -73,126 +85,140 @@ export default function UsersPage() {
 
     fetchUsers();
   }
-  
+
   return (
     <div className="p-6 min-h-screen bg-gray-50">
 
-{/* Header */}
-<div className="flex items-center justify-between bg-white p-4 rounded-lg border">
+      {/* Header */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-lg border">
 
-  <h1 className="text-xl font-semibold text-black">
-    Gestão de Usuários
-  </h1>
+        <h1 className="text-xl font-semibold text-black">
+          Gestão de Usuários
+        </h1>
 
-  <div className="flex gap-2">
+        <div className="flex gap-2">
 
-    <button
-      onClick={() => setIsModalOpen(true)}
-      className="bg-emerald-700 text-white px-4 py-2 rounded-lg cursor-pointer"
-    >
-      Novo usuário
-    </button>
-
-    <button
-      onClick={() => setIsImportOpen(true)}
-      className="bg-white border border-emerald-700 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer"
-    >
-      Importar CSV
-    </button>
-
-  </div>
-
-</div>
-
-{/* Busca */}
-<div className="mt-4 mb-4">
-
-  <input
-    type="text"
-    placeholder="Buscar por nome ou e-mail..."
-    value={search}
-    onChange={(e) => setSearch(e.target.value)}
-    className="border rounded-lg px-4 py-2 w-80 text-black"
-  />
-
-</div>
-
-  {/* Table */}
-  <div className="mt-6 bg-white border rounded-lg overflow-hidden">
-
-    <table className="w-full text-black">
-
-      <thead className="bg-emerald-700 text-white">
-        <tr>
-          <th className="p-3 text-left">Nome</th>
-          <th className="p-3 text-left">Email</th>
-          <th className="p-3 text-left">Departamento</th>
-          <th className="p-3 text-left">Gestor</th>
-          <th className="p-3 text-left">Status</th>
-          <th className="p-3 text-left">Ações</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {filteredUsers.map((user) => (
-          <tr
-            key={user.user_id_chatguru}
-            className="border-t hover:bg-green-50"
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-emerald-700 text-white px-4 py-2 rounded-lg cursor-pointer"
           >
-            <td className="p-3 text-black">{user.user_name}</td>
-            <td className="p-3 text-black">{user.user_email}</td>
-            <td className="p-3 text-black">{user.user_department}</td>
-            <td className="p-3 text-black">{user.nome_do_gestor}</td>
+            Novo usuário
+          </button>
 
-            <td className="p-3 text-black">{user.user_status}</td>
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="bg-white border border-emerald-700 text-emerald-700 px-4 py-2 rounded-lg cursor-pointer"
+          >
+            Importar CSV
+          </button>
 
-            <td className="p-3 flex gap-3">
+        </div>
 
-              <button
-                className="text-green-700 hover:underline cursor-pointer"
-                onClick={() => {
-                  setSelectedUser(user);
-                  setIsEditOpen(true);
-                }}
+      </div>
+
+      {/* Busca e Filtros */}
+      <div className="mt-4 mb-4 flex gap-4">
+
+        <input
+          type="text"
+          placeholder="Buscar por nome ou e-mail..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border rounded-lg px-4 py-2 w-80 text-black"
+        />
+
+        <select
+          value={managerFilter}
+          onChange={(e) => setManagerFilter(e.target.value)}
+          className="border rounded-lg px-4 py-2 text-black"
+        >
+          <option value="">Todos os gestores</option>
+
+          {managers.map((manager) => (
+            <option key={manager} value={manager}>
+              {manager}
+            </option>
+          ))}
+        </select>
+
+      </div>
+
+      {/* Table */}
+      <div className="mt-6 bg-white border rounded-lg overflow-hidden">
+
+        <table className="w-full text-black">
+
+          <thead className="bg-emerald-700 text-white">
+            <tr>
+              <th className="p-3 text-left">Nome</th>
+              <th className="p-3 text-left">Email</th>
+              <th className="p-3 text-left">Departamento</th>
+              <th className="p-3 text-left">Gestor</th>
+              <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Ações</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredUsers.map((user) => (
+              <tr
+                key={user.user_id_chatguru}
+                className="border-t hover:bg-green-50"
               >
-                Editar
-              </button>
+                <td className="p-3 text-black">{user.user_name}</td>
+                <td className="p-3 text-black">{user.user_email}</td>
+                <td className="p-3 text-black">{user.user_department}</td>
+                <td className="p-3 text-black">{user.nome_do_gestor}</td>
 
-              <button
-                className="text-red-600 hover:underline cursor-pointer"
-                onClick={() => handleDelete(user)}
-              >
-                Remover
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
+                <td className="p-3 text-black">{user.user_status}</td>
 
-    </table>
-  </div>
+                <td className="p-3 flex gap-3">
 
-    {/* 👇 AQUI FICA O MODAL */}
-    <CreateUserModal
+                  <button
+                    className="text-green-700 hover:underline cursor-pointer"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setIsEditOpen(true);
+                    }}
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    className="text-red-600 hover:underline cursor-pointer"
+                    onClick={() => handleDelete(user)}
+                  >
+                    Remover
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+
+        </table>
+      </div>
+
+      {/* 👇 AQUI FICA O MODAL */}
+      <CreateUserModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onCreated={fetchUsers}
-    />
+      />
 
-    <EditUserModal
-      isOpen={isEditOpen}
-      user={selectedUser}
-      onClose={() => setIsEditOpen(false)}
-      onUpdated={fetchUsers}
-    />
+      <EditUserModal
+        isOpen={isEditOpen}
+        user={selectedUser}
+        onClose={() => setIsEditOpen(false)}
+        onUpdated={fetchUsers}
+      />
 
-    <ImportUsersModal
-      isOpen={isImportOpen}
-      onClose={() => setIsImportOpen(false)}
-      onImported={fetchUsers}
-    />
+      <ImportUsersModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImported={fetchUsers}
+      />
 
 
-</div>
+    </div>
   );
 }

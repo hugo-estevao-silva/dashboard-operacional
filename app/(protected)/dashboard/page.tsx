@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
 export default function Home() {
-  
+
   const [now, setNow] = useState(Date.now());
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [ordenacao, setOrdenacao] = useState("nome");
@@ -14,33 +14,32 @@ export default function Home() {
   const [busca, setBusca] = useState("");
   const [somenteCriticos, setSomenteCriticos] = useState(false);
   const [mostrarDeslogados, setMostrarDeslogados] = useState(false)
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [managerFilter, setManagerFilter] = useState("");
   const router = useRouter();
 
   function formatarTempo(dataInicio: string) {
 
-  const inicio = new Date(dataInicio);
+    const inicio = new Date(dataInicio);
 
-  inicio.setHours(inicio.getHours() - 3);
+    inicio.setHours(inicio.getHours() - 3);
 
-  const agora = new Date();
+    const agora = new Date();
 
-  const diferenca = agora.getTime() - inicio.getTime();
+    const diferenca = agora.getTime() - inicio.getTime();
 
-  const totalSegundos = Math.floor(diferenca / 1000);
+    const totalSegundos = Math.floor(diferenca / 1000);
 
-  const horas = Math.floor(totalSegundos / 3600);
+    const horas = Math.floor(totalSegundos / 3600);
 
-  const minutos = Math.floor(
-    (totalSegundos % 3600) / 60
-  );
+    const minutos = Math.floor(
+      (totalSegundos % 3600) / 60
+    );
 
-  const segundos = totalSegundos % 60;
+    const segundos = totalSegundos % 60;
 
- 
-
-
-  return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
-}
+    return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+  }
 
   async function logout() {
 
@@ -64,455 +63,497 @@ export default function Home() {
   }
 
   async function alterarStatus(
-  id: number,
-  novoStatus: string
-): Promise<void> {
-  const { data, error } = await supabase
-    .from("userChatguru")
-    .update({
-      user_status: novoStatus
-    })
-    .eq("user_id_chatguru", id)
+    id: number,
+    novoStatus: string
+  ): Promise<void> {
+    const { data, error } = await supabase
+      .from("userChatguru")
+      .update({
+        user_status: novoStatus
+      })
+      .eq("user_id_chatguru", id)
 
-    .select();
+      .select();
 
-  console.log("Resultado:", data);
-  console.log("Erro:", error);
+    console.log("Resultado:", data);
+    console.log("Erro:", error);
 
-  if (error) {
-    alert(`Erro: ${error.message}`);
-    return;
+    if (error) {
+      alert(`Erro: ${error.message}`);
+      return;
+    }
+
+    buscarUsuarios();
   }
 
-  buscarUsuarios();
-}
-
-useEffect(() => {
-
-  buscarUsuarios();
-
-  const interval = setInterval(() => {
+  useEffect(() => {
 
     buscarUsuarios();
 
-    setNow(Date.now());
+    const interval = setInterval(() => {
 
-  }, 1000);
+      buscarUsuarios();
 
-  return () => clearInterval(interval);
+      setNow(Date.now());
 
-}, []);
+    }, 1000);
 
-const usuariosFiltrados = usuarios.filter((usuario) => {
+    return () => clearInterval(interval);
 
-  const nomeMatch = usuario.user_name
-    ?.toLowerCase()
-    .includes(busca.toLowerCase());
+  }, []);
 
-  if (!nomeMatch) {
-    return false;
-  }
-
-  const usuariosDeslogados = [
-    "Offline",
-    "Férias",
-    "Atestado"
-  ];
-
-  if (
-    !mostrarDeslogados &&
-    usuariosDeslogados.includes(
-      usuario.user_status
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    filtroStatus &&
-    usuario.user_status !== filtroStatus
-  ) {
-    return false;
-  }
-
-  if (!somenteCriticos) {
-    return true;
-  }
-
-  if (!usuario.status_started_at) {
-    return false;
-  }
-
-  const inicio = new Date(usuario.status_started_at);
-
-  inicio.setHours(inicio.getHours() - 3);
-
-  const agora = new Date();
-
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
-
-  const pausaCritico =
-    usuario.user_status === "Pausa" &&
-    minutos > 15;
-
-  const almocoCritico =
-    usuario.user_status === "Almoço" &&
-    minutos > 120;
-
-  const callCritico =
-    usuario.user_status === "Call" &&
-    minutos > 60;
+  const usuariosFiltrados = usuarios.filter((usuario) => {
 
 
-  return pausaCritico || almocoCritico || callCritico;
-});
+    if (departmentFilter) {
+      const userDepartments = String(usuario.user_department || "")
+        .split(",")
+        .map((dep) => dep.trim());
 
-const usuariosOrdenados = [...usuariosFiltrados].sort((a, b) => {
-
-  let resultado = 0;
-
-  switch (ordenacao) {
-
-    case "nome":
-      resultado = a.user_name.localeCompare(
-        b.user_name
-      );
-      break;
-
-    case "maisChats":
-      resultado =
-        (b.in_progress_chats_count || 0) -
-        (a.in_progress_chats_count || 0);
-      break;
-
-    case "menosChats":
-      resultado =
-        (a.in_progress_chats_count || 0) -
-        (b.in_progress_chats_count || 0);
-      break;
-
-    default:
-      resultado = 0;
-  }
-
-  // Se houver empate, usa tempo
-  if (resultado === 0) {
-
-    if (
-      a.status_started_at &&
-      b.status_started_at
-    ) {
-
-      const tempoA =
-        new Date(
-          a.status_started_at
-        ).getTime();
-
-      const tempoB =
-        new Date(
-          b.status_started_at
-        ).getTime();
-
-      return ordenacaoTempo === "maior"
-        ? tempoA - tempoB
-        : tempoB - tempoA;
+      if (!userDepartments.includes(departmentFilter)) {
+        return false;
+      }
     }
 
-  }
+    const nomeMatch = usuario.user_name
+      ?.toLowerCase()
+      .includes(busca.toLowerCase());
 
-  return resultado;
+    if (!nomeMatch) {
+      return false;
+    }
 
-});
+    const usuariosDeslogados = [
+      "Offline",
+      "Férias",
+      "Atestado"
+    ];
 
-function obterClasseStatus(usuario: any) {
+    if (
+      !mostrarDeslogados &&
+      usuariosDeslogados.includes(
+        usuario.user_status
+      )
+    ) {
+      return false;
+    }
 
-  if (!usuario.status_started_at) {
+    if (
+      managerFilter &&
+      usuario.nome_do_gestor !== managerFilter
+    ) {
+      return false;
+    }
+
+    if (
+      filtroStatus &&
+      usuario.user_status !== filtroStatus
+    ) {
+      return false;
+    }
+
+    if (!somenteCriticos) {
+      return true;
+    }
+
+    if (!usuario.status_started_at) {
+      return false;
+    }
+
+    const inicio = new Date(usuario.status_started_at);
+
+    inicio.setHours(inicio.getHours() - 3);
+
+    const agora = new Date();
+
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+    const pausaCritico =
+      usuario.user_status === "Pausa" &&
+      minutos > 15;
+
+    const almocoCritico =
+      usuario.user_status === "Almoço" &&
+      minutos > 120;
+
+    const callCritico =
+      usuario.user_status === "Call" &&
+      minutos > 60;
+
+
+    return pausaCritico || almocoCritico || callCritico;
+  });
+
+  const usuariosOrdenados = [...usuariosFiltrados].sort((a, b) => {
+
+    let resultado = 0;
+
+    switch (ordenacao) {
+
+      case "nome":
+        resultado = a.user_name.localeCompare(
+          b.user_name
+        );
+        break;
+
+      case "maisChats":
+        resultado =
+          (b.in_progress_chats_count || 0) -
+          (a.in_progress_chats_count || 0);
+        break;
+
+      case "menosChats":
+        resultado =
+          (a.in_progress_chats_count || 0) -
+          (b.in_progress_chats_count || 0);
+        break;
+
+      default:
+        resultado = 0;
+    }
+
+
+
+    // Se houver empate, usa tempo
+    if (resultado === 0) {
+
+      if (
+        a.status_started_at &&
+        b.status_started_at
+      ) {
+
+        const tempoA =
+          new Date(
+            a.status_started_at
+          ).getTime();
+
+        const tempoB =
+          new Date(
+            b.status_started_at
+          ).getTime();
+
+        return ordenacaoTempo === "maior"
+          ? tempoA - tempoB
+          : tempoB - tempoA;
+      }
+
+    }
+
+    return resultado;
+
+  });
+
+  const departments: string[] = [
+    ...new Set(
+      usuarios
+        .flatMap((u) =>
+          String(u.user_department || "")
+            .split(",")
+            .map((dep) => dep.trim())
+            .filter(Boolean)
+        )
+    ),
+  ].sort();
+
+  const managers: string[] = [
+    ...new Set(
+      usuarios
+        .map((u) => String(u.nome_do_gestor || "").trim())
+        .filter(Boolean)
+    ),
+  ].sort();
+
+
+
+  function obterClasseStatus(usuario: any) {
+
+    if (!usuario.status_started_at) {
+      return "bg-gray-100 text-gray-700";
+    }
+
+    const inicio = new Date(usuario.status_started_at);
+
+    inicio.setHours(inicio.getHours() - 3);
+
+    const agora = new Date();
+
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+    // DISPONÍVEL
+    if (usuario.user_status === "Disponível") {
+
+      if (minutos > 240) {
+        return "bg-yellow-200 text-yellow-900";
+      }
+
+      return "bg-green-100 text-green-700";
+    }
+
+    // ALMOÇO
+    if (usuario.user_status === "Almoço") {
+
+      if (minutos > 120) {
+        return "bg-red-200 text-red-900";
+      }
+
+      return "bg-yellow-100 text-yellow-700";
+    }
+
+    // PAUSA
+    if (usuario.user_status === "Pausa") {
+
+      if (minutos > 15) {
+        return "bg-red-200 text-red-900";
+      }
+
+      return "bg-blue-100 text-blue-700";
+    }
+
+    // Call
+    if (usuario.user_status === "Call") {
+
+      if (minutos > 60) {
+        return "bg-red-200 text-red-900";
+      }
+
+      return "bg-blue-100 text-blue-700";
+    }
+
     return "bg-gray-100 text-gray-700";
   }
 
-  const inicio = new Date(usuario.status_started_at);
+  const totalDisponiveis = usuarios.filter(
+    (u) => u.user_status === "Disponível"
+  ).length;
 
-  inicio.setHours(inicio.getHours() - 3);
+  const totalAlmoco = usuarios.filter(
+    (u) => u.user_status === "Almoço"
+  ).length;
 
-  const agora = new Date();
+  const totalPausa = usuarios.filter(
+    (u) => u.user_status === "Pausa"
+  ).length;
 
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
+  const totalCall = usuarios.filter(
+    (u) => u.user_status === "Call"
+  ).length;
 
-  // DISPONÍVEL
-  if (usuario.user_status === "Disponível") {
+  const totalAtendimento = usuarios.filter(
+    (u) => (u.in_progress_chats_count || 0) > 0
+  ).length;
 
-    if (minutos > 240) {
-      return "bg-yellow-200 text-yellow-900";
+  const alertasPausa = usuarios.filter((usuario) => {
+
+    if (
+      usuario.user_status !== "Pausa" ||
+      !usuario.status_started_at
+    ) {
+      return false;
     }
 
-    return "bg-green-100 text-green-700";
-  }
+    const inicio = new Date(usuario.status_started_at);
 
-  // ALMOÇO
-  if (usuario.user_status === "Almoço") {
+    inicio.setHours(inicio.getHours() - 3);
 
-    if (minutos > 120) {
-      return "bg-red-200 text-red-900";
+    const agora = new Date();
+
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+    return minutos > 15;
+
+  }).length;
+
+  const alertasAlmoco = usuarios.filter((usuario) => {
+
+    if (
+      usuario.user_status !== "Almoço" ||
+      !usuario.status_started_at
+    ) {
+      return false;
     }
 
-    return "bg-yellow-100 text-yellow-700";
-  }
+    const inicio = new Date(usuario.status_started_at);
 
-  // PAUSA
-  if (usuario.user_status === "Pausa") {
+    inicio.setHours(inicio.getHours() - 3);
 
-    if (minutos > 15) {
-      return "bg-red-200 text-red-900";
+    const agora = new Date();
+
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+    return minutos > 120;
+
+  }).length;
+
+  const alertasCall = usuarios.filter((usuario) => {
+
+    if (
+      usuario.user_status !== "Call" ||
+      !usuario.status_started_at
+    ) {
+      return false;
     }
 
-    return "bg-blue-100 text-blue-700";
-  }
+    const inicio = new Date(usuario.status_started_at);
 
-  // Call
-  if (usuario.user_status === "Call") {
+    inicio.setHours(inicio.getHours() - 3);
 
-    if (minutos > 60) {
-      return "bg-red-200 text-red-900";
+    const agora = new Date();
+
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
+
+    return minutos > 60;
+
+  }).length;
+
+  function linhaCritica(usuario: any) {
+
+    if (!usuario.status_started_at) {
+      return "";
     }
 
-    return "bg-blue-100 text-blue-700";
-  }
+    const inicio = new Date(usuario.status_started_at);
 
-  return "bg-gray-100 text-gray-700";
-}
+    inicio.setHours(inicio.getHours() - 3);
 
-const totalDisponiveis = usuarios.filter(
-  (u) => u.user_status === "Disponível"
-).length;
+    const agora = new Date();
 
-const totalAlmoco = usuarios.filter(
-  (u) => u.user_status === "Almoço"
-).length;
+    const minutos =
+      (agora.getTime() - inicio.getTime()) / 1000 / 60;
 
-const totalPausa = usuarios.filter(
-  (u) => u.user_status === "Pausa"
-).length;
+    const pausaCritico =
+      usuario.user_status === "Pausa" &&
+      minutos > 10;
 
-const totalCall = usuarios.filter(
-  (u) => u.user_status === "Call"
-).length;
+    const almocoCritico =
+      usuario.user_status === "Almoço" &&
+      minutos > 120;
 
-const totalAtendimento = usuarios.filter(
-  (u) => (u.in_progress_chats_count || 0) > 0
-).length;
+    const callCritico =
+      usuario.user_status === "Call" &&
+      minutos > 60;
 
-const alertasPausa = usuarios.filter((usuario) => {
+    if (pausaCritico || callCritico || almocoCritico) {
+      return "bg-red-50 border-l-4 border-red-500";
+    }
 
-  if (
-    usuario.user_status !== "Pausa" ||
-    !usuario.status_started_at
-  ) {
-    return false;
-  }
-
-  const inicio = new Date(usuario.status_started_at);
-
-  inicio.setHours(inicio.getHours() - 3);
-
-  const agora = new Date();
-
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
-
-  return minutos > 15;
-
-}).length;
-
-const alertasAlmoco = usuarios.filter((usuario) => {
-
-  if (
-    usuario.user_status !== "Almoço" ||
-    !usuario.status_started_at
-  ) {
-    return false;
-  }
-
-  const inicio = new Date(usuario.status_started_at);
-
-  inicio.setHours(inicio.getHours() - 3);
-
-  const agora = new Date();
-
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
-
-  return minutos > 120;
-
-}).length;
-
-const alertasCall = usuarios.filter((usuario) => {
-
-  if (
-    usuario.user_status !== "Call" ||
-    !usuario.status_started_at
-  ) {
-    return false;
-  }
-
-  const inicio = new Date(usuario.status_started_at);
-
-  inicio.setHours(inicio.getHours() - 3);
-
-  const agora = new Date();
-
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
-
-  return minutos > 60;
-
-}).length;
-
-function linhaCritica(usuario: any) {
-
-  if (!usuario.status_started_at) {
     return "";
   }
-
-  const inicio = new Date(usuario.status_started_at);
-
-  inicio.setHours(inicio.getHours() - 3);
-
-  const agora = new Date();
-
-  const minutos =
-    (agora.getTime() - inicio.getTime()) / 1000 / 60;
-
-  const pausaCritico =
-    usuario.user_status === "Pausa" &&
-    minutos > 10;
-
-  const almocoCritico =
-    usuario.user_status === "Almoço" &&
-    minutos > 120;
-
-  const callCritico =
-    usuario.user_status === "Call" &&
-    minutos > 60;
-
-  if (pausaCritico || callCritico || almocoCritico) {
-    return "bg-red-50 border-l-4 border-red-500";
-  }
-
-  return "";
-}
 
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
 
       <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
 
-        <div className="bg-white rounded-2xl shadow p-6">
+          <div className="bg-white rounded-2xl shadow p-6">
 
-          <h2 className="text-gray-500 text-sm">
-            Disponíveis
-          </h2>
+            <h2 className="text-gray-500 text-sm">
+              Disponíveis
+            </h2>
 
-          <p className="text-4xl font-bold text-green-600 mt-2">
-           {totalDisponiveis}
-          </p>
-
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <h2 className="text-gray-500 text-sm">
-            Em almoço
-          </h2>
-
-          <p className="text-4xl font-bold text-yellow-600 mt-2">
-            {totalAlmoco}
-          </p>
-
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <h2 className="text-gray-500 text-sm">
-            Pausa
-          </h2>
-
-          <p className="text-4xl font-bold text-yellow-600 mt-2">
-          {totalPausa}
-          </p>
-
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <h2 className="text-gray-500 text-sm">
-            Call
-          </h2>
-
-          <p className="text-4xl font-bold text-blue-600 mt-2">
-          {totalCall}
-          </p>
-
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <h2 className="text-gray-500 text-sm">
-            Em atendimento
-          </h2>
-
-          <p className="text-4xl font-bold text-emerald-600 mt-2">
-            {totalAtendimento}
-          </p>
-
-        </div>
-
-        <div className="bg-white rounded-2xl shadow p-6 border-2 border-red-300">
-
-          <h2 className="text-gray-500 text-sm">
-            Alertas críticos
-          </h2>
-
-          <p className="text-4xl font-bold text-red-600 mt-2">
-            {alertasPausa + alertasAlmoco + alertasCall}
-          </p>
-
-          <div className="mt-4 text-sm text-gray-600">
-
-            <p>
-              ⏸️ Pausa: {alertasPausa}
+            <p className="text-4xl font-bold text-green-600 mt-2">
+              {totalDisponiveis}
             </p>
 
-            <p>
-              🍽️ Almoço: {alertasAlmoco}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-gray-500 text-sm">
+              Em almoço
+            </h2>
+
+            <p className="text-4xl font-bold text-yellow-600 mt-2">
+              {totalAlmoco}
             </p>
 
-            <p>
-              🎧 Call: {alertasCall}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-gray-500 text-sm">
+              Pausa
+            </h2>
+
+            <p className="text-4xl font-bold text-yellow-600 mt-2">
+              {totalPausa}
             </p>
+
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-gray-500 text-sm">
+              Call
+            </h2>
+
+            <p className="text-4xl font-bold text-blue-600 mt-2">
+              {totalCall}
+            </p>
+
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-gray-500 text-sm">
+              Em atendimento
+            </h2>
+
+            <p className="text-4xl font-bold text-emerald-600 mt-2">
+              {totalAtendimento}
+            </p>
+
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6 border-2 border-red-300">
+
+            <h2 className="text-gray-500 text-sm">
+              Alertas críticos
+            </h2>
+
+            <p className="text-4xl font-bold text-red-600 mt-2">
+              {alertasPausa + alertasAlmoco + alertasCall}
+            </p>
+
+            <div className="mt-4 text-sm text-gray-600">
+
+              <p>
+                ⏸️ Pausa: {alertasPausa}
+              </p>
+
+              <p>
+                🍽️ Almoço: {alertasAlmoco}
+              </p>
+
+              <p>
+                🎧 Call: {alertasCall}
+              </p>
+
+            </div>
 
           </div>
 
         </div>
 
-      </div>
+        <div className="flex items-center justify-between mb-6">
 
-      <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-black">
+            Dashboard Operacional
+          </h1>
 
-        <h1 className="text-3xl font-bold text-black">
-          Dashboard Operacional
-        </h1>
-
-      </div>
+        </div>
 
 
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center gap-4 flex-wrap">
 
           <input
-           type="text"
+            type="text"
             placeholder="Buscar analista..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -525,13 +566,13 @@ function linhaCritica(usuario: any) {
 
           <label className="flex items-center gap-2 text-black">
 
-          <input
-            type="checkbox"
-            checked={somenteCriticos}
-            onChange={(e) =>
-              setSomenteCriticos(e.target.checked)
-            }
-          />
+            <input
+              type="checkbox"
+              checked={somenteCriticos}
+              onChange={(e) =>
+                setSomenteCriticos(e.target.checked)
+              }
+            />
 
             Somente críticos
 
@@ -539,7 +580,7 @@ function linhaCritica(usuario: any) {
 
           <label className="flex items-center gap-2 text-black">
 
-          <input
+            <input
               type="checkbox"
               checked={mostrarDeslogados}
               onChange={(e) =>
@@ -549,13 +590,48 @@ function linhaCritica(usuario: any) {
               }
             />
 
-              Mostrar deslogados
-            </label>
+            Mostrar deslogados
+          </label>
+        </div>
+
+        <div className="mb-6 flex items-center gap-4 flex-wrap">
 
           <select
-           value={ordenacao}
-           onChange={(e) => setOrdenacao(e.target.value)}
-           className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+            value={managerFilter}
+            onChange={(e) => setManagerFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-56"
+          >
+            <option value="">Todos gestores</option>
+
+            {managers.map((manager: string) => (
+              <option key={manager} value={manager}>
+                {manager}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={departmentFilter}
+            onChange={(e) =>
+              setDepartmentFilter(e.target.value)
+            }
+            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+          >
+            <option value="">
+              Todos departamentos
+            </option>
+
+            {departments.map((dep) => (
+              <option key={dep} value={dep}>
+                {dep}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={ordenacao}
+            onChange={(e) => setOrdenacao(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
           >
             <option value="">
               Selecione um Filtro
@@ -598,7 +674,7 @@ function linhaCritica(usuario: any) {
             onChange={(e) => setOrdenacaoTempo(e.target.value)}
             className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
           >
-            
+
             <option value="maior">
               Mais tempo
             </option>
@@ -623,6 +699,10 @@ function linhaCritica(usuario: any) {
 
                 <th className="text-left p-4 font-bold">
                   Analista
+                </th>
+
+                <th className="text-left p-4 font-bold">
+                  Departamento
                 </th>
 
                 <th className="text-left p-4 font-bold">
@@ -661,38 +741,41 @@ function linhaCritica(usuario: any) {
                     {usuario.user_name}
                   </td>
 
+                  <td className="p-4">
+                    {usuario.user_department || "-"}
+                  </td>
+
                   <td>
                     <select
                       value={usuario.user_status}
                       onChange={(e) =>
                         alterarStatus(
-                        usuario.user_id_chatguru,
-                        e.target.value
-                      )
+                          usuario.user_id_chatguru,
+                          e.target.value
+                        )
                       }
                       className={`rounded-lg px-3 py-2 font-semibold text-black border-none
 
-                        ${
-                          usuario.user_status === "Disponível"
-                            ? "bg-green-200"
+                        ${usuario.user_status === "Disponível"
+                          ? "bg-green-200"
 
                           : usuario.user_status === "Offline"
                             ? "bg-gray-300"
 
-                          : [
+                            : [
                               "Almoço",
                               "Call",
                               "Pausa",
                               "Férias",
                               "Atestado"
                             ].includes(usuario.user_status)
-                            ? (
+                              ? (
                                 usuario.tempoPausaCritico
                                   ? "bg-red-300"
                                   : "bg-yellow-200"
                               )
 
-                          : "bg-white"
+                              : "bg-white"
                         }
                       `}
                     >
@@ -729,8 +812,8 @@ function linhaCritica(usuario: any) {
                   <td className="text-center p-4 font-mono">
 
                     {usuario.status_started_at
-                    ? formatarTempo(usuario.status_started_at)
-                    : "--:--:--"}
+                      ? formatarTempo(usuario.status_started_at)
+                      : "--:--:--"}
 
                   </td>
 
