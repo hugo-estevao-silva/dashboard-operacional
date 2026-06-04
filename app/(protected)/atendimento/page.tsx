@@ -7,7 +7,7 @@ import { Fragment } from "react";
 
 export default function Atendimento() {
 
-  const router = useRouter();
+    const router = useRouter();
 
     const [carregando, setCarregando] = useState(true);
     const [busca, setBusca] = useState("");
@@ -16,10 +16,12 @@ export default function Atendimento() {
     const [expandido, setExpandido] = useState<number | null>(null);
     const [analistas, setAnalistas] = useState<any[]>([]);
     const [filtroAnalista, setFiltroAnalista] = useState("");
-    
-  // ======================
-  // CALCULAR TEMPO
-  // ======================
+    const [filtroStatusAtendimento, setFiltroStatusAtendimento] = useState("");
+    const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
+
+    // ======================
+    // CALCULAR TEMPO
+    // ======================
 
     function calcularTempoTotal(item: any) {
 
@@ -134,7 +136,7 @@ export default function Atendimento() {
             return;
         }
 
-            const { data, error } = await supabase
+        const { data, error } = await supabase
             .from("atendimento")
             .update({
                 id_analista_atual:
@@ -188,9 +190,9 @@ export default function Atendimento() {
         );
     }
 
-  // ======================
-  // BUSCAR DADOS
-  // ======================
+    // ======================
+    // BUSCAR DADOS
+    // ======================
 
     useEffect(() => {
 
@@ -198,11 +200,7 @@ export default function Atendimento() {
 
             const { data, error } = await supabase
                 .from("atendimento")
-                .select("*")
-                .neq(
-                    "status_do_atendimento",
-                    "Finalizado"
-                );
+                .select("*");
 
             if (!error) {
                 setAtendimentos(data || []);
@@ -247,58 +245,68 @@ export default function Atendimento() {
         const intervalo = setInterval(() => {
             setAgora(Date.now());
 
-        },1000);
+        }, 1000);
 
         return () =>
-        clearInterval(intervalo);
+            clearInterval(intervalo);
 
-    },[]);
+    }, []);
 
 
-  // ======================
-  // FILTRO BUSCA
-  // ======================
+    // ======================
+    // FILTRO BUSCA
+    // ======================
 
-  const atendimentosFiltrados =
-    atendimentos.filter((item) => {
+    const atendimentosFiltrados =
+        atendimentos.filter((item) => {
 
-        const buscaFormatada =
-            busca.toLowerCase();
+            const buscaFormatada =
+                busca.toLowerCase();
 
-        const nomeMatch =
-            item.cliente
-                ?.toLowerCase()
-                .includes(buscaFormatada);
+            const nomeMatch =
+                item.cliente
+                    ?.toLowerCase()
+                    .includes(buscaFormatada);
 
-        const celularMatch =
-            item.celular
-                ?.toString()
-                .includes(busca);
+            const celularMatch =
+                item.celular
+                    ?.toString()
+                    .includes(busca);
 
-        const analistaMatch =
-            !filtroAnalista ||
-            String(item.id_analista_atual) ===
-            String(filtroAnalista);
+            const analistaMatch =
+                !filtroAnalista ||
+                String(item.id_analista_atual) ===
+                String(filtroAnalista);
+
+            const statusMatch =
+                !filtroStatusAtendimento ||
+                item.status_do_atendimento === filtroStatusAtendimento;
+
+            const finalizadoMatch =
+                mostrarFinalizados ||
+                item.status_do_atendimento !== "Finalizado";
+
+            return (
+                (nomeMatch || celularMatch) &&
+                analistaMatch &&
+                statusMatch &&
+                finalizadoMatch
+            );
+        });
+
+    // ======================
+    // LOADING
+    // ======================
+
+    if (carregando) {
 
         return (
-            (nomeMatch || celularMatch) &&
-            analistaMatch
+            <div className="p-6">
+                Carregando...
+            </div>
         );
-    });
 
-  // ======================
-  // LOADING
-  // ======================
-
-  if (carregando) {
-
-    return (
-      <div className="p-6">
-        Carregando...
-      </div>
-    );
-
-  }
+    }
 
 
     async function buscarAnalistas() {
@@ -351,31 +359,32 @@ export default function Atendimento() {
     }
 
 
-  // ======================
-  // TELA
-  // ======================
+    // ======================
+    // TELA
+    // ======================
 
-  return (
+    return (
 
-    <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-black">
-                Atendimentos
-            </h1>
-        </div>
+        <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-3xl font-bold text-black">
+                    Atendimentos
+                </h1>
+            </div>
 
-        <div className="mb-6 flex items-center gap-4">
-            <input
-            type="text"
-            placeholder="Buscar cliente por nome ou número..."
-            value={busca}
-            onChange={(e)=>
-            setBusca(
-                e.target.value
-            )
-            }
-            className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72"/>
-       
+
+            <div className="mb-6 flex items-center gap-4">
+                <input
+                    type="text"
+                    placeholder="Buscar cliente por nome ou número..."
+                    value={busca}
+                    onChange={(e) =>
+                        setBusca(
+                            e.target.value
+                        )
+                    }
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72" />
+
                 <select
                     value={filtroAnalista}
                     onChange={(e) =>
@@ -392,7 +401,7 @@ export default function Atendimento() {
                 >
 
                     <option value="">
-                        Todos analistas
+                        Todos os analistas
                     </option>
 
                     {analistas.map((analista) => (
@@ -407,11 +416,55 @@ export default function Atendimento() {
                     ))}
 
                 </select>
-       
-        </div>
 
-        <div
-            className="
+                                <select
+                    value={filtroStatusAtendimento}
+                    onChange={(e) =>
+                        setFiltroStatusAtendimento(e.target.value)
+                    }
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+                >
+                    <option value="">
+                        Todos status
+                    </option>
+
+                    <option value="Aberto">
+                        Aberto
+                    </option>
+
+                    <option value="Fila de Atendimento">
+                        Fila de atendimento
+                    </option>
+
+                    <option value="Em atendimento">
+                        Em atendimento
+                    </option>
+
+                    <option value="Aguardando">
+                        Aguardando
+                    </option>
+
+                    <option value="Finalizado">
+                        Finalizado
+                    </option>
+                </select>
+
+                <label className="flex items-center gap-2 text-black font-medium">
+                    <input
+                        type="checkbox"
+                        checked={mostrarFinalizados}
+                        onChange={(e) =>
+                            setMostrarFinalizados(e.target.checked)
+                        }
+                    />
+
+                    Mostrar finalizados
+                </label>
+
+            </div>
+
+            <div
+                className="
             bg-white
             rounded-2xl
             shadow-md
@@ -419,211 +472,211 @@ export default function Atendimento() {
             "
             >
 
-            <table className="w-full">
+                <table className="w-full">
 
-                <thead className="bg-emerald-700 text-white">
+                    <thead className="bg-emerald-700 text-white">
 
-                    <tr>
+                        <tr>
 
-                        <th className="text-left px-5 py-4">
-                        Cliente
-                        </th>
+                            <th className="text-left px-5 py-4">
+                                Cliente
+                            </th>
 
-                        <th className="text-center px-5 py-4">
-                        Status
-                        </th>
+                            <th className="text-center px-5 py-4">
+                                Status
+                            </th>
 
-                        <th className="text-center px-5 py-4">
-                        Tempo Total
-                        </th>
+                            <th className="text-center px-5 py-4">
+                                Tempo Total
+                            </th>
 
-                        <th className="text-center px-5 py-4">
-                            Tempo Atendimento
-                        </th>
+                            <th className="text-center px-5 py-4">
+                                Tempo Atendimento
+                            </th>
 
-                        <th className="text-center px-5 py-4">
-                        Analista
-                        </th>
+                            <th className="text-center px-5 py-4">
+                                Analista
+                            </th>
 
-                        <th className="text-center px-5 py-4">
-                        Ticket
-                        </th>
+                            <th className="text-center px-5 py-4">
+                                Ticket
+                            </th>
 
-                    </tr>
+                        </tr>
 
-                </thead>
+                    </thead>
 
-                <tbody className="bg-white text-black">
+                    <tbody className="bg-white text-black">
 
-                    {atendimentosFiltrados.map((item) => (
-                        <Fragment key={item.id}>
+                        {atendimentosFiltrados.map((item) => (
+                            <Fragment key={item.id}>
 
-                            <tr
-                                className="border-b hover:bg-gray-50 cursor-pointer"
-                                onClick={() =>
-                                    setExpandido(
-                                        expandido === item.id
-                                        ? null
-                                        : item.id
-                                    )
-                                }
-                            >
+                                <tr
+                                    className="border-b hover:bg-gray-50 cursor-pointer"
+                                    onClick={() =>
+                                        setExpandido(
+                                            expandido === item.id
+                                                ? null
+                                                : item.id
+                                        )
+                                    }
+                                >
 
-                                <td className="px-5 py-4">
-                                    {item.cliente}
-                                </td>
+                                    <td className="px-5 py-4">
+                                        {item.cliente}
+                                    </td>
 
-                                <td className="text-center">
+                                    <td className="text-center">
 
-                                    <select
-                                        value={item.status_do_atendimento || ""}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) =>
-                                            atualizarAtendimento(
-                                                item.id,
-                                                "status_do_atendimento",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="border rounded px-2 py-1 bg-white"
-                                    >
+                                        <select
+                                            value={item.status_do_atendimento || ""}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) =>
+                                                atualizarAtendimento(
+                                                    item.id,
+                                                    "status_do_atendimento",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="border rounded px-2 py-1 bg-white"
+                                        >
 
-                                        <option value="Aberto">
-                                            Aberto
-                                        </option>
+                                            <option value="Aberto">
+                                                Aberto
+                                            </option>
 
-                                        <option value="Fila de Atendimento">
-                                            Fila de atendimento
-                                        </option>
+                                            <option value="Fila de Atendimento">
+                                                Fila de atendimento
+                                            </option>
 
-                                        <option value="Em atendimento">
-                                            Em atendimento
-                                        </option>
+                                            <option value="Em atendimento">
+                                                Em atendimento
+                                            </option>
 
-                                        <option value="Aguardando">
-                                            Aguardando
-                                        </option>
+                                            <option value="Aguardando">
+                                                Aguardando
+                                            </option>
 
-                                        <option value="Finalizado">
-                                            Finalizado
-                                        </option>
+                                            <option value="Finalizado">
+                                                Finalizado
+                                            </option>
 
-                                    </select>
+                                        </select>
 
-                                </td>
+                                    </td>
 
-                                <td className="text-center">
-                                    {calcularTempoTotal(item)}
-                                </td>
+                                    <td className="text-center">
+                                        {calcularTempoTotal(item)}
+                                    </td>
 
-                                <td
-                                    className={`
+                                    <td
+                                        className={`
                                         text-center
                                         ${classeTempoAtendimento(item)}
                                     `}
-                                >
-                                    {calcularTempoAtendimento(item)}
-                                </td>
-
-                                <td className="text-center">
-
-                                    <select
-                                        value={String(item.id_analista_atual || "")}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) =>
-                                            atualizarAnalista(
-                                                item.id,
-                                                e.target.value
-                                            )
-                                        }
-                                        className="border rounded px-2 py-1 bg-white"
                                     >
+                                        {calcularTempoAtendimento(item)}
+                                    </td>
 
-                                        <option value="">
-                                            Selecione
-                                        </option>
+                                    <td className="text-center">
 
-                                        {analistas.map((analista) => (
+                                        <select
+                                            value={String(item.id_analista_atual || "")}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) =>
+                                                atualizarAnalista(
+                                                    item.id,
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="border rounded px-2 py-1 bg-white"
+                                        >
 
-                                            <option
-                                                key={analista.user_id_chatguru}
-                                                value={String(analista.user_id_chatguru)}
-                                            >
-                                                {analista.user_name}
+                                            <option value="">
+                                                Selecione
                                             </option>
 
-                                        ))}
+                                            {analistas.map((analista) => (
 
-                                    </select>
+                                                <option
+                                                    key={analista.user_id_chatguru}
+                                                    value={String(analista.user_id_chatguru)}
+                                                >
+                                                    {analista.user_name}
+                                                </option>
 
-                                </td>
+                                            ))}
 
-                                <td className="text-center">
-                                    {item.ticket_jira || "-"}
-                                </td>
+                                        </select>
 
-                            </tr>
-
-                            {expandido === item.id && (
-                                <tr>
-                                    <td colSpan={5}
-                                        className="bg-gray-50 px-6 py-4 text-black"
-                                    >
-                                        <div className="grid grid-cols-2 gap-4">
-
-                                            <div>
-                                                <b>ID:</b> {item.id}
-                                            </div>
-
-                                            <div>
-                                            <b>Celular:</b> {item.celular}
-                                            </div>
-
-                                            <div>
-                                            <b>Tipo:</b> {item.tipo_do_cliente}
-                                            </div>
-
-                                            <div>
-                                            <b>Motivo:</b> {item.motivo}
-                                            </div>
-
-                                            <div>
-                                            <b>Submotivo:</b> {item.submotivo}
-                                            </div>
-
-                                            <div>
-                                            <b>Fila:</b> {item.hora_inicio_fila}
-                                            </div>
-
-                                            <div>
-                                            <b>Chat:</b>{" "}
-                                            <a
-                                                href={item.link_do_chat}
-                                                target="_blank"
-                                                className="text-blue-600 underline ml-2"
-                                            >
-                                                Abrir
-                                            </a>
-                                            </div>
-
-                                        </div>
                                     </td>
+
+                                    <td className="text-center">
+                                        {item.ticket_jira || "-"}
+                                    </td>
+
                                 </tr>
-                            )}
 
-                        </Fragment>
-                    ))}
+                                {expandido === item.id && (
+                                    <tr>
+                                        <td colSpan={5}
+                                            className="bg-gray-50 px-6 py-4 text-black"
+                                        >
+                                            <div className="grid grid-cols-2 gap-4">
 
-                </tbody>
+                                                <div>
+                                                    <b>ID:</b> {item.id}
+                                                </div>
 
-            </table>
+                                                <div>
+                                                    <b>Celular:</b> {item.celular}
+                                                </div>
 
+                                                <div>
+                                                    <b>Tipo:</b> {item.tipo_do_cliente}
+                                                </div>
+
+                                                <div>
+                                                    <b>Motivo:</b> {item.motivo}
+                                                </div>
+
+                                                <div>
+                                                    <b>Submotivo:</b> {item.submotivo}
+                                                </div>
+
+                                                <div>
+                                                    <b>Fila:</b> {item.hora_inicio_fila}
+                                                </div>
+
+                                                <div>
+                                                    <b>Chat:</b>{" "}
+                                                    <a
+                                                        href={item.link_do_chat}
+                                                        target="_blank"
+                                                        className="text-blue-600 underline ml-2"
+                                                    >
+                                                        Abrir
+                                                    </a>
+                                                </div>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+
+                            </Fragment>
+                        ))}
+
+                    </tbody>
+
+                </table>
+
+
+            </div>
 
         </div>
 
-    </div>
 
-
-  );
+    );
 
 }
