@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Props = {
@@ -26,11 +26,21 @@ const departmentOptions = [
   "Escalation WhatsApp",
 ];
 
+
 export default function CreateUserModal({
   isOpen,
   onClose,
   onCreated,
 }: Props) {
+
+
+  type Gestor = {
+    user_name: string;
+    user_id_chatguru: string;
+  };
+
+  const [gestores, setGestores] = useState<Gestor[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -45,7 +55,32 @@ export default function CreateUserModal({
     work_start_time: "",
     work_end_time: "",
     service_max_count: "",
+    gestor: false,
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function buscarGestores() {
+      const { data, error } = await supabase
+        .from("userChatguru")
+        .select("user_name, user_id_chatguru")
+        .eq("gestor", true)
+        .order("user_name", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        alert("Erro ao buscar gestores");
+        return;
+      }
+
+      setGestores(data || []);
+    }
+
+    buscarGestores();
+  }, [isOpen]);
+
+
 
   if (!isOpen) return null;
 
@@ -79,137 +114,151 @@ export default function CreateUserModal({
     });
   }
 
-  function resetForm() {
-  setForm({
-    user_email: "",
-    user_name: "",
-    user_id_chatguru: "",
-    user_level: "N1",
-    user_department: [],
-    connection_overflow: [],
-    nome_do_gestor: "",
-    gestor_user_id: "",
-    work_start_time: "",
-    work_end_time: "",
-    service_max_count: "",
-  });
-}
-
-async function handleSubmit() {
-
-  // validações
-
-  if (!form.user_email.trim()) {
-    alert("Preencha o campo E-mail");
-    return;
-  }
-
-  if (!form.user_name.trim()) {
-    alert("Preencha o campo Nome");
-    return;
-  }
-
-  if (!form.user_id_chatguru.trim()) {
-    alert("Preencha o campo User ID");
-    return;
-  }
-
-  if (form.user_department.length === 0) {
-    alert("Selecione pelo menos um Departamento");
-    return;
-  }
-
-  if (!form.nome_do_gestor.trim()) {
-    alert("Preencha o Nome do gestor");
-    return;
-  }
-
-  if (!form.gestor_user_id.trim()) {
-    alert("Preencha o User ID do gestor");
-    return;
-  }
-
-  if (!form.work_start_time) {
-    alert("Informe o horário de início");
-    return;
-  }
-
-  if (!form.work_end_time) {
-    alert("Informe o horário de fim");
-    return;
-  }
-
-  if (!form.service_max_count) {
-    alert("Informe o limite de chats simultâneos");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const { error } = await supabase
-      .from("userChatguru")
-      .insert([
-        {
-          user_email: form.user_email,
-          user_name: form.user_name,
-          user_id_chatguru: form.user_id_chatguru,
-          user_level: form.user_level,
-
-          user_department:
-            form.user_department.join(", "),
-
-          connection_overflow:
-            form.connection_overflow.join(", "),
-
-          nome_do_gestor:
-            form.nome_do_gestor,
-
-          gestor_user_id:
-            form.gestor_user_id,
-
-          work_start_time:
-            form.work_start_time,
-
-          work_end_time:
-            form.work_end_time,
-
-          service_max_count:
-            Math.max(
-              0,
-              Number(form.service_max_count)
-            ),
-        },
-      ]);
-
-    if (error) {
-      throw error;
-    }
-
-    // limpa formulário após sucesso
-    resetForm();
-
-    // atualiza tabela
-    onCreated();
-
-    // fecha modal
-    onClose();
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(
-      "Erro ao criar usuário"
+  function handleGestorChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const gestorSelecionado = gestores.find(
+      gestor => gestor.user_id_chatguru === e.target.value
     );
 
-  } finally {
-
-    // SEMPRE executa
-    setLoading(false);
-
+    setForm({
+      ...form,
+      nome_do_gestor: gestorSelecionado?.user_name || "",
+      gestor_user_id: gestorSelecionado?.user_id_chatguru || "",
+    });
   }
-}
+
+  function resetForm() {
+    setForm({
+      user_email: "",
+      user_name: "",
+      user_id_chatguru: "",
+      user_level: "N1",
+      user_department: [],
+      connection_overflow: [],
+      nome_do_gestor: "",
+      gestor_user_id: "",
+      work_start_time: "",
+      work_end_time: "",
+      service_max_count: "",
+      gestor: false,
+    });
+  }
+
+  async function handleSubmit() {
+
+    // validações
+
+    if (!form.user_email.trim()) {
+      alert("Preencha o campo E-mail");
+      return;
+    }
+
+    if (!form.user_name.trim()) {
+      alert("Preencha o campo Nome");
+      return;
+    }
+
+    if (!form.user_id_chatguru.trim()) {
+      alert("Preencha o campo User ID");
+      return;
+    }
+
+    if (form.user_department.length === 0) {
+      alert("Selecione pelo menos um Departamento");
+      return;
+    }
+
+    if (!form.nome_do_gestor.trim()) {
+      alert("Preencha o Nome do gestor");
+      return;
+    }
+
+    if (!form.gestor_user_id.trim()) {
+      alert("Selecione um gestor");
+      return;
+    }
+
+    if (!form.work_start_time) {
+      alert("Informe o horário de início");
+      return;
+    }
+
+    if (!form.work_end_time) {
+      alert("Informe o horário de fim");
+      return;
+    }
+
+    if (!form.service_max_count) {
+      alert("Informe o limite de chats simultâneos");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from("userChatguru")
+        .insert([
+          {
+            user_email: form.user_email,
+            user_name: form.user_name,
+            user_id_chatguru: form.user_id_chatguru,
+            user_level: form.user_level,
+            gestor: form.gestor,
+
+            user_department:
+              form.user_department.join(", "),
+
+            connection_overflow:
+              form.connection_overflow.join(", "),
+
+            nome_do_gestor:
+              form.nome_do_gestor,
+
+            gestor_user_id:
+              form.gestor_user_id,
+
+            work_start_time:
+              form.work_start_time,
+
+            work_end_time:
+              form.work_end_time,
+
+            service_max_count:
+              Math.max(
+                0,
+                Number(form.service_max_count)
+              ),
+          },
+        ]);
+
+      if (error) {
+        throw error;
+      }
+
+      // limpa formulário após sucesso
+      resetForm();
+
+      // atualiza tabela
+      onCreated();
+
+      // fecha modal
+      onClose();
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        "Erro ao criar usuário"
+      );
+
+    } finally {
+
+      // SEMPRE executa
+      setLoading(false);
+
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-start z-50 p-4">
@@ -229,7 +278,7 @@ async function handleSubmit() {
 
         {/* Corpo rolável */}
         <div className="p-6 space-y-5 overflow-y-auto">
-          <label  className="text-black">
+          <label className="text-black">
             E-mail*
           </label>
 
@@ -241,10 +290,10 @@ async function handleSubmit() {
             className="w-full border rounded p-3 text-black"
           />
 
-          <label  className="text-black">
+          <label className="text-black">
             Nome*
           </label>
-          
+
           <input
             name="user_name"
             placeholder="Nome"
@@ -253,7 +302,7 @@ async function handleSubmit() {
             className="w-full border rounded p-3 text-black"
           />
 
-          <label  className="text-black">
+          <label className="text-black">
             user_id*
           </label>
 
@@ -265,7 +314,7 @@ async function handleSubmit() {
             className="w-full border rounded p-3 text-black"
           />
 
-          <label  className="text-black">
+          <label className="text-black">
             Nível
           </label>
 
@@ -278,6 +327,26 @@ async function handleSubmit() {
             <option>N1</option>
             <option>N2</option>
           </select>
+
+          <div className="flex items-center border rounded p-3 text-black">
+            <label htmlFor="gestor" className="mr-2">
+              Este usuário é um gestor?
+            </label>
+
+            <input
+              type="checkbox"
+              id="gestor"
+              checked={form.gestor}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  gestor: e.target.checked,
+                })
+              }
+              className="cursor-pointer"
+            />
+          </div>
+
 
           {/* Departamento */}
 
@@ -346,30 +415,33 @@ async function handleSubmit() {
 
             </div>
           </div>
-            
-          <label  className="text-black">
-           Nome do gestor*
+
+          <label className="text-black">
+            Nome do gestor*
           </label>
 
-          <input
-            name="nome_do_gestor"
-            placeholder="Nome do gestor"
-            value={form.nome_do_gestor}
-            onChange={handleChange}
-            className="w-full border rounded p-3 text-black"
-          />
-
-          <label  className="text-black">
-            user_id do gestor*
+          <label className="text-black">
+            Gestor*
           </label>
 
-          <input
-            name="gestor_user_id"
-            placeholder="User ID do gestor"
+          <select
             value={form.gestor_user_id}
-            onChange={handleChange}
+            onChange={handleGestorChange}
             className="w-full border rounded p-3 text-black"
-          />
+          >
+            <option value="">
+              Selecione um gestor
+            </option>
+
+            {gestores.map(gestor => (
+              <option
+                key={gestor.user_id_chatguru}
+                value={gestor.user_id_chatguru}
+              >
+                {gestor.user_name}
+              </option>
+            ))}
+          </select>
 
           <div className="grid grid-cols-2 gap-4">
 
@@ -402,19 +474,19 @@ async function handleSubmit() {
             </div>
 
           </div>
-            <label  className="text-black">
-              Limite de chats simultâneos*
-            </label>
-            <input
-                type="number"
-                name="service_max_count"
-                placeholder="Limite de chats simultâneos"
-                value={form.service_max_count}
-                onChange={handleChange}
-                min={0}
-                step={1}
-                className="w-full border rounded p-3 text-black"
-              />
+          <label className="text-black">
+            Limite de chats simultâneos*
+          </label>
+          <input
+            type="number"
+            name="service_max_count"
+            placeholder="Limite de chats simultâneos"
+            value={form.service_max_count}
+            onChange={handleChange}
+            min={0}
+            step={1}
+            className="w-full border rounded p-3 text-black"
+          />
 
         </div>
 

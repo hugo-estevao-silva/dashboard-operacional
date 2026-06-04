@@ -10,6 +10,11 @@ type Props = {
   onUpdated: () => void;
 };
 
+type Gestor = {
+  user_name: string;
+  user_id_chatguru: string;
+};
+
 const departmentOptions = [
   "N1 Chatbot/Integrações",
   "N1 Premium/WL",
@@ -33,14 +38,15 @@ export default function EditUserModal({
   onClose,
   onUpdated,
 }: Props) {
-
   const [loading, setLoading] = useState(false);
+  const [gestores, setGestores] = useState<Gestor[]>([]);
 
   const [form, setForm] = useState({
     user_email: "",
     user_name: "",
     user_id_chatguru: "",
     user_level: "N1",
+    gestor: false,
     user_department: [] as string[],
     connection_overflow: [] as string[],
     nome_do_gestor: "",
@@ -51,95 +57,93 @@ export default function EditUserModal({
   });
 
   useEffect(() => {
+    if (!isOpen) return;
 
+    async function buscarGestores() {
+      const { data, error } = await supabase
+        .from("userChatguru")
+        .select("user_name, user_id_chatguru")
+        .eq("gestor", true)
+        .order("user_name", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        alert("Erro ao buscar gestores");
+        return;
+      }
+
+      setGestores(data || []);
+    }
+
+    buscarGestores();
+  }, [isOpen]);
+
+  useEffect(() => {
     if (user) {
-
       setForm({
         user_email: user.user_email || "",
         user_name: user.user_name || "",
-        user_id_chatguru:
-          user.user_id_chatguru || "",
+        user_id_chatguru: user.user_id_chatguru || "",
+        user_level: user.user_level || "N1",
+        gestor: user.gestor || false,
 
-        user_level:
-          user.user_level || "N1",
+        user_department: user.user_department
+          ? user.user_department.split(", ")
+          : [],
 
-        user_department:
-          user.user_department
-            ? user.user_department
-              .split(", ")
-            : [],
+        connection_overflow: user.connection_overflow
+          ? user.connection_overflow.split(", ")
+          : [],
 
-        connection_overflow:
-          user.connection_overflow
-            ? user.connection_overflow
-              .split(", ")
-            : [],
-
-        nome_do_gestor:
-          user.nome_do_gestor || "",
-
-        gestor_user_id:
-          user.gestor_user_id || "",
-
-        work_start_time:
-          user.work_start_time || "",
-
-        work_end_time:
-          user.work_end_time || "",
-
-        service_max_count:
-          String(
-            user.service_max_count || ""
-          ),
+        nome_do_gestor: user.nome_do_gestor || "",
+        gestor_user_id: user.gestor_user_id || "",
+        work_start_time: user.work_start_time || "",
+        work_end_time: user.work_end_time || "",
+        service_max_count: String(user.service_max_count || ""),
       });
-
     }
-
   }, [user]);
 
   if (!isOpen || !user) return null;
 
   function handleChange(
-    e: React.ChangeEvent<
-      HTMLInputElement |
-      HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
-
     setForm({
       ...form,
       [e.target.name]: e.target.value,
     });
+  }
 
+  function handleGestorChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const gestorSelecionado = gestores.find(
+      gestor => gestor.user_id_chatguru === e.target.value
+    );
+
+    setForm({
+      ...form,
+      nome_do_gestor: gestorSelecionado?.user_name || "",
+      gestor_user_id: gestorSelecionado?.user_id_chatguru || "",
+    });
   }
 
   function handleCheckbox(
-    field:
-      | "user_department"
-      | "connection_overflow",
+    field: "user_department" | "connection_overflow",
     value: string
   ) {
-
     const current = form[field];
 
-    const updated =
-      current.includes(value)
-        ? current.filter(
-          item => item !== value
-        )
-        : [...current, value];
+    const updated = current.includes(value)
+      ? current.filter(item => item !== value)
+      : [...current, value];
 
     setForm({
       ...form,
       [field]: updated,
     });
-
   }
 
   async function handleSubmit() {
-
-    // validações
-
     if (!form.user_email.trim()) {
       alert("Preencha o campo E-mail");
       return;
@@ -160,13 +164,8 @@ export default function EditUserModal({
       return;
     }
 
-    if (!form.nome_do_gestor.trim()) {
-      alert("Preencha o Nome do gestor");
-      return;
-    }
-
     if (!form.gestor_user_id.trim()) {
-      alert("Preencha o User ID do gestor");
+      alert("Selecione um gestor");
       return;
     }
 
@@ -186,7 +185,6 @@ export default function EditUserModal({
     }
 
     try {
-
       setLoading(true);
 
       const { error } = await supabase
@@ -196,36 +194,23 @@ export default function EditUserModal({
           user_name: form.user_name,
           user_id_chatguru: form.user_id_chatguru,
           user_level: form.user_level,
+          gestor: form.gestor,
 
-          user_department:
-            form.user_department.join(", "),
+          user_department: form.user_department.join(", "),
+          connection_overflow: form.connection_overflow.join(", "),
 
-          connection_overflow:
-            form.connection_overflow.join(", "),
+          nome_do_gestor: form.nome_do_gestor,
+          gestor_user_id: form.gestor_user_id,
 
-          nome_do_gestor:
-            form.nome_do_gestor,
+          work_start_time: form.work_start_time,
+          work_end_time: form.work_end_time,
 
-          gestor_user_id:
-            form.gestor_user_id,
-
-          work_start_time:
-            form.work_start_time,
-
-          work_end_time:
-            form.work_end_time,
-
-          service_max_count:
-            Math.max(
-              0,
-              Number(form.service_max_count)
-            ),
+          service_max_count: Math.max(
+            0,
+            Number(form.service_max_count)
+          ),
         })
-
-        .eq(
-          "id",
-          user.id
-        );
+        .eq("id", user.id);
 
       if (error) {
         throw error;
@@ -233,33 +218,21 @@ export default function EditUserModal({
 
       onUpdated();
       onClose();
-
     } catch (error) {
-
       console.error(error);
-
-      alert(
-        "Erro ao atualizar usuário"
-      );
-
+      alert("Erro ao atualizar usuário");
     } finally {
-
       setLoading(false);
-
     }
-
   }
 
   return (
-
     <div className="fixed inset-0 bg-black/50 flex justify-center items-start z-50 p-4">
-
       <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
 
-        {/* Header */}
         <div className="bg-emerald-700 text-white px-6 py-4 flex justify-between shrink-0">
           <h2 className="font-semibold text-lg">
-            Novo Usuário
+            Editar Usuário
           </h2>
 
           <button onClick={onClose} className="cursor-pointer">
@@ -267,9 +240,7 @@ export default function EditUserModal({
           </button>
         </div>
 
-        {/* Corpo rolável */}
         <div className="p-6 space-y-5 overflow-y-auto">
-
           <label className="text-black">E-mail</label>
           <input
             name="user_email"
@@ -308,97 +279,86 @@ export default function EditUserModal({
             <option>N2</option>
           </select>
 
-          <div>
+          <div className="flex items-center border rounded p-3 text-black">
+            <label htmlFor="gestor" className="mr-2">
+              Este usuário é um gestor?
+            </label>
 
+            <input
+              type="checkbox"
+              id="gestor"
+              checked={form.gestor}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  gestor: e.target.checked,
+                })
+              }
+              className="cursor-pointer"
+            />
+          </div>
+
+          <div>
             <label className="font-medium text-black">
               Departamento
             </label>
 
             <div className="grid grid-cols-2 gap-2 mt-2">
-
               {departmentOptions.map(item => (
-
-                <label
-                  key={item}
-                  className="flex gap-2 text-black"
-                >
-
+                <label key={item} className="flex gap-2 text-black">
                   <input
                     type="checkbox"
                     checked={form.user_department.includes(item)}
                     onChange={() =>
-                      handleCheckbox(
-                        "user_department",
-                        item
-                      )
+                      handleCheckbox("user_department", item)
                     }
                   />
-
                   {item}
-
                 </label>
-
               ))}
-
             </div>
-
           </div>
 
           <div>
-
             <label className="font-medium text-black">
               Atende transbordo de
             </label>
 
             <div className="grid grid-cols-2 gap-2 mt-2">
-
               {departmentOptions.map(item => (
-
-                <label
-                  key={item}
-                  className="flex gap-2 text-black"
-                >
-
+                <label key={item} className="flex gap-2 text-black">
                   <input
                     type="checkbox"
                     checked={form.connection_overflow.includes(item)}
                     onChange={() =>
-                      handleCheckbox(
-                        "connection_overflow",
-                        item
-                      )
+                      handleCheckbox("connection_overflow", item)
                     }
                   />
-
                   {item}
-
                 </label>
-
               ))}
-
             </div>
-
           </div>
 
-          <label className="text-black"> Nome do Gestor*</label>
-          <input
-            name="nome_do_gestor"
-            placeholder="Nome do gestor"
-            value={form.nome_do_gestor}
-            onChange={handleChange}
-            className="w-full border rounded p-3 text-black"
-          />
-          <label className="text-black">User_id do Gestor*</label>
-          <input
-            name="gestor_user_id"
-            placeholder="User ID gestor"
+          <label className="text-black">Gestor*</label>
+          <select
             value={form.gestor_user_id}
-            onChange={handleChange}
+            onChange={handleGestorChange}
             className="w-full border rounded p-3 text-black"
-          />
+          >
+            <option value="">Selecione um gestor</option>
+
+            {gestores.map(gestor => (
+              <option
+                key={gestor.user_id_chatguru}
+                value={gestor.user_id_chatguru}
+              >
+                {gestor.user_name}
+              </option>
+            ))}
+          </select>
 
           <div className="grid grid-cols-2 gap-4">
-
             <div>
               <label className="text-black">
                 Horário de inicio do atendimento*
@@ -426,10 +386,12 @@ export default function EditUserModal({
                 className="w-full border rounded p-3 text-black"
               />
             </div>
-
           </div>
 
-          <label className="text-black">Limite de chats simultâneos*</label>
+          <label className="text-black">
+            Limite de chats simultâneos*
+          </label>
+
           <input
             type="number"
             min={0}
@@ -440,12 +402,9 @@ export default function EditUserModal({
             onChange={handleChange}
             className="w-full border rounded p-3 text-black"
           />
-
         </div>
 
-        {/* Footer fixo */}
         <div className="border-t p-4 flex justify-end gap-2 shrink-0 bg-white">
-
           <button
             onClick={onClose}
             className="border px-4 py-2 rounded text-black cursor-pointer"
@@ -458,19 +417,10 @@ export default function EditUserModal({
             disabled={loading}
             className="bg-emerald-700 text-white px-4 py-2 rounded cursor-pointer"
           >
-
-            {loading
-              ? "Salvando..."
-              : "Salvar alterações"}
-
+            {loading ? "Salvando..." : "Salvar alterações"}
           </button>
-
         </div>
-
       </div>
-
     </div>
-
   );
-
 }

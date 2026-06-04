@@ -21,151 +21,149 @@ export default function ImportUsersModal({
 
   function handleFileChange(
     e: React.ChangeEvent<HTMLInputElement>
-    ) {
+  ) {
     const selectedFile = e.target.files?.[0];
 
     if (selectedFile) {
-        setFile(selectedFile);
+      setFile(selectedFile);
     }
-    }
+  }
 
   if (!isOpen) return null;
 
   async function handleSubmit() {
 
     if (!file) {
-        alert("Selecione um arquivo CSV");
-        return;
+      alert("Selecione um arquivo CSV");
+      return;
     }
 
     setLoading(true);
 
     Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
+      header: true,
+      skipEmptyLines: true,
 
-        complete: async (
+      complete: async (
         results: Papa.ParseResult<any>
-        ) => {
+      ) => {
 
         try {
 
-            const users = results.data.map(
+          const users = results.data.map(
             (user: any) => ({
-                user_email: user.user_email,
-                user_name: user.user_name,
-                user_id_chatguru:
+              user_email: user.user_email,
+              user_name: user.user_name,
+              user_id_chatguru:
                 user.user_id_chatguru,
 
-                user_level:
+              user_level:
                 user.user_level,
 
-                user_department:
+              user_department:
                 user.user_department,
 
-                connection_overflow:
+              connection_overflow:
                 user.connection_overflow,
 
-                nome_do_gestor:
+              nome_do_gestor:
                 user.nome_do_gestor,
 
-                gestor_user_id:
+              gestor_user_id:
                 user.gestor_user_id,
 
-                work_start_time:
+              work_start_time:
                 user.work_start_time,
 
-                work_end_time:
+              work_end_time:
                 user.work_end_time,
 
-                service_max_count:
+              service_max_count:
                 Number(
-                    user.service_max_count
+                  user.service_max_count
                 ),
             })
-            );
+          );
 
-            const { error } =
+          const { error } =
             await supabase
-                .from("userChatguru")
-                .insert(users);
+              .from("userChatguru")
+              .insert(users);
 
-            if (error) {
+          if (error) {
             throw error;
-            }
+          }
 
-            setFile(null);
+          setFile(null);
 
-            onImported();
-            onClose();
+          onImported();
+          onClose();
 
-        } catch (error) {
+        } catch (error: any) {
+          console.error("Erro completo:", error);
+          console.error("Mensagem:", error?.message);
+          console.error("Detalhes:", error?.details);
+          console.error("Hint:", error?.hint);
+          console.error("Code:", error?.code);
 
-            console.error(error);
-
-            alert(
-            "Erro ao importar usuários"
-            );
-
+          alert(error?.message || "Erro ao atualizar usuário");
         } finally {
 
-            setLoading(false);
+          setLoading(false);
 
         }
-        }
+      }
     });
-    }
+  }
 
   return (
 
-<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
 
-<div className="bg-white rounded-xl w-full max-w-lg">
+      <div className="bg-white rounded-xl w-full max-w-lg">
 
-<div className="bg-emerald-700 text-white p-4 flex justify-between">
+        <div className="bg-emerald-700 text-white p-4 flex justify-between">
 
-<h2 className="font-semibold text-lg">
-Importar CSV
-</h2>
+          <h2 className="font-semibold text-lg">
+            Importar CSV
+          </h2>
 
-<button onClick={onClose} className= "cursor-pointer">
-✕
-</button>
+          <button onClick={onClose} className="cursor-pointer">
+            ✕
+          </button>
 
-</div>
+        </div>
 
-<div className="p-6 space-y-4">
+        <div className="p-6 space-y-4">
 
-<p className="text-black">
+          <p className="text-black">
 
-Selecione um arquivo CSV contendo:
+            Selecione um arquivo CSV contendo:
 
-</p>
+          </p>
 
-<div className="bg-gray-100 p-3 rounded text-sm text-black">
+          <div className="bg-gray-100 p-3 rounded text-sm text-black">
 
-user_email<br/>
-user_name<br/>
-user_id_chatguru<br/>
-user_level<br/>
-user_department<br/>
-connection_overflow<br/>
-nome_do_gestor<br/>
-gestor_user_id<br/>
-work_start_time<br/>
-work_end_time<br/>
-service_max_count
+            user_email<br />
+            user_name<br />
+            user_id_chatguru<br />
+            user_level<br />
+            user_department<br />
+            connection_overflow<br />
+            work_start_time<br />
+            work_end_time<br />
+            service_max_count
 
-</div>
+          </div>
 
-<div className="space-y-2">
+          <div className="space-y-2">
 
-  <label className="text-black font-medium">
-    Arquivo CSV
-  </label>
+            <label className="text-black font-medium">
+              Arquivo CSV
+            </label>
 
-  <label
-    className="
+            <label
+              className="
       flex items-center justify-center
       w-full p-4
       border-2 border-dashed
@@ -176,46 +174,46 @@ service_max_count
       cursor-pointer
       transition
     "
-  >
-    <span className="text-black">
+            >
+              <span className="text-black">
 
-      {file
-        ? `📄 ${file.name}`
-        : "Clique para selecionar um arquivo CSV"}
+                {file
+                  ? `📄 ${file.name}`
+                  : "Clique para selecionar um arquivo CSV"}
 
-    </span>
+              </span>
 
-    <input
-      type="file"
-      accept=".csv"
-      onChange={handleFileChange}
-      className="hidden"
-    />
-  </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
 
-</div>
+          </div>
 
-</div>
+        </div>
 
-<div className="border-t p-4 flex justify-end gap-2">
+        <div className="border-t p-4 flex justify-end gap-2">
 
-  <button
-    onClick={onClose}
-    className="
+          <button
+            onClick={onClose}
+            className="
       border
       px-4 py-2
       rounded
       text-black
       cursor-pointer
     "
-  >
-    Cancelar
-  </button>
+          >
+            Cancelar
+          </button>
 
-  <button
-    onClick={handleSubmit}
-    disabled={!file || loading}
-    className="
+          <button
+            onClick={handleSubmit}
+            disabled={!file || loading}
+            className="
       bg-emerald-700
       text-white
       px-4 py-2
@@ -225,17 +223,17 @@ service_max_count
       disabled:opacity-50
       disabled:cursor-not-allowed
     "
-  >
-    {loading
-      ? "Importando..."
-      : "Importar usuários"}
-  </button>
+          >
+            {loading
+              ? "Importando..."
+              : "Importar usuários"}
+          </button>
 
-</div>
+        </div>
 
-</div>
+      </div>
 
-</div>
+    </div>
 
   );
 
