@@ -28,6 +28,11 @@ export default function Sidebar() {
       href: "/users",
       icon: "👥",
     },
+    {
+      label: "Feriados",
+      href: "/feriados",
+      icon: "📅",
+    },
   ];
 
     const router = useRouter();
