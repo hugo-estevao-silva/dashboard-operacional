@@ -22,6 +22,12 @@ export default function Sidebar() {
       href: "/atendimento",
       icon: "🎧",
     },
+
+      {
+      label: "Histórico",
+      href: "/historico",
+      icon: "🗃️",
+    },
   
     {
       label: "Usuários",

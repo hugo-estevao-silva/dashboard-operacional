@@ -18,64 +18,73 @@ export default function Atendimento() {
     const [filtroAnalista, setFiltroAnalista] = useState("");
     const [filtroStatusAtendimento, setFiltroStatusAtendimento] = useState("");
     const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
+    const ITENS_POR_PAGINA = 100;
+    const [pagina, setPagina] = useState(1);
+    const [totalRegistros, setTotalRegistros] = useState(0);
+    const [buscaAplicada, setBuscaAplicada] = useState("");
+    const [filtroAnalistaAplicado, setFiltroAnalistaAplicado] = useState("");
+    const [buscaCliente, setBuscaCliente] = useState("");
+    const [buscaClienteAplicada, setBuscaClienteAplicada] = useState("");
+    const [buscaCelular, setBuscaCelular] = useState("");
+    const [buscaCelularAplicada, setBuscaCelularAplicada] = useState("");
 
     // ======================
     // CALCULAR TEMPO
     // ======================
 
     function calcularTempoTotal(item: any) {
-
-        if (!item.inicio_do_atendimento_bot) {
-            return "--:--:--";
+        if (!item.inicio_do_atendimento_bot || !item.fim_do_atendimento) {
+            return "";
         }
 
-        const inicio = new Date(
-            item.inicio_do_atendimento_bot
-        ).getTime();
+        const inicio = new Date(item.inicio_do_atendimento_bot).getTime();
+        const fim = new Date(item.fim_do_atendimento).getTime();
 
-        const diferenca = agora - inicio;
+        if (isNaN(inicio) || isNaN(fim)) {
+            return "";
+        }
 
-        const horas = Math.floor(
-            diferenca / (1000 * 60 * 60)
-        );
+        const diferenca = fim - inicio;
 
+        if (diferenca < 0) {
+            return "";
+        }
+
+        const horas = Math.floor(diferenca / (1000 * 60 * 60));
         const minutos = Math.floor(
-            (diferenca % (1000 * 60 * 60)) /
-            (1000 * 60)
+            (diferenca % (1000 * 60 * 60)) / (1000 * 60)
         );
-
         const segundos = Math.floor(
-            (diferenca % (1000 * 60)) /
-            1000
+            (diferenca % (1000 * 60)) / 1000
         );
 
         return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
     }
 
     function calcularTempoAtendimento(item: any) {
-
-        if (!item.inicio_do_atendimento_humano) {
-            return "--:--:--";
+        if (!item.inicio_do_atendimento_humano || !item.fim_do_atendimento) {
+            return "";
         }
 
-        const inicio = new Date(
-            item.inicio_do_atendimento_humano
-        ).getTime();
+        const inicio = new Date(item.inicio_do_atendimento_humano).getTime();
+        const fim = new Date(item.fim_do_atendimento).getTime();
 
-        const diferenca = agora - inicio;
+        if (isNaN(inicio) || isNaN(fim)) {
+            return "";
+        }
 
-        const horas = Math.floor(
-            diferenca / (1000 * 60 * 60)
-        );
+        const diferenca = fim - inicio;
 
+        if (diferenca < 0) {
+            return "";
+        }
+
+        const horas = Math.floor(diferenca / (1000 * 60 * 60));
         const minutos = Math.floor(
-            (diferenca % (1000 * 60 * 60)) /
-            (1000 * 60)
+            (diferenca % (1000 * 60 * 60)) / (1000 * 60)
         );
-
         const segundos = Math.floor(
-            (diferenca % (1000 * 60)) /
-            1000
+            (diferenca % (1000 * 60)) / 1000
         );
 
         return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
@@ -198,12 +207,38 @@ export default function Atendimento() {
 
         async function carregar(): Promise<void> {
 
-            const { data, error } = await supabase
+            const inicio = (pagina - 1) * ITENS_POR_PAGINA;
+            const fim = inicio + ITENS_POR_PAGINA - 1;
+
+            let query = supabase
                 .from("atendimento")
-                .select("*")
-                .neq("status_do_atendimento", "Finalizado")
+                .select("*", { count: "exact" })
+                .eq("status_do_atendimento", "Finalizado");
+
+            if (buscaClienteAplicada.trim()) {
+                query = query.ilike(
+                    "cliente",
+                    `%${buscaClienteAplicada.trim()}%`
+                );
+            }
+
+            if (buscaCelularAplicada.trim()) {
+                query = query.eq(
+                    "celular",
+                    buscaCelularAplicada.trim()
+                );
+            }
+
+            if (filtroAnalistaAplicado) {
+                query = query.eq(
+                    "id_analista_atual",
+                    filtroAnalistaAplicado
+                );
+            }
+
+            const { data, error, count } = await query
                 .order("id", { ascending: false })
-                .limit(1000);
+                .range(inicio, fim);
 
             if (error) {
                 console.error(error);
@@ -211,9 +246,8 @@ export default function Atendimento() {
             }
 
             setAtendimentos(data || []);
+            setTotalRegistros(count || 0);
             setCarregando(false);
-
-            console.log("Atendimentos carregados:", data?.length);
         }
 
         async function buscarAnalistas() {
@@ -233,19 +267,14 @@ export default function Atendimento() {
 
         // primeira carga
         carregar();
-
         buscarAnalistas();
 
-        // atualização automática
-        const interval = setInterval(() => {
-
-            carregar();
-
-        }, 5000);
-
-        return () => clearInterval(interval);
-
-    }, []);
+    }, [
+        pagina,
+        buscaClienteAplicada,
+        buscaCelularAplicada,
+        filtroAnalistaAplicado
+    ]);
 
     useEffect(() => {
 
@@ -264,37 +293,7 @@ export default function Atendimento() {
     // FILTRO BUSCA
     // ======================
 
-    const atendimentosFiltrados =
-        atendimentos.filter((item) => {
-
-            const buscaFormatada =
-                busca.toLowerCase();
-
-            const nomeMatch =
-                item.cliente
-                    ?.toLowerCase()
-                    .includes(buscaFormatada);
-
-            const celularMatch =
-                item.celular
-                    ?.toString()
-                    .includes(busca);
-
-            const analistaMatch =
-                !filtroAnalista ||
-                String(item.id_analista_atual) ===
-                String(filtroAnalista);
-
-            const statusMatch =
-                !filtroStatusAtendimento ||
-                item.status_do_atendimento === filtroStatusAtendimento;
-
-            return (
-                (nomeMatch || celularMatch) &&
-                analistaMatch &&
-                statusMatch
-            );
-        });
+    const atendimentosFiltrados = atendimentos;
 
     // ======================
     // LOADING
@@ -360,6 +359,10 @@ export default function Atendimento() {
         );
     }
 
+    const totalPaginas = Math.max(
+        1,
+        Math.ceil(totalRegistros / ITENS_POR_PAGINA)
+    );
 
     // ======================
     // TELA
@@ -370,7 +373,7 @@ export default function Atendimento() {
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold text-black">
-                    Atendimentos
+                    Histórico de Atendimentos
                 </h1>
             </div>
 
@@ -378,14 +381,27 @@ export default function Atendimento() {
             <div className="mb-6 flex items-center gap-4">
                 <input
                     type="text"
-                    placeholder="Buscar cliente por nome ou número..."
-                    value={busca}
+                    placeholder="Buscar cliente por nome"
+                    value={buscaCliente}
                     onChange={(e) =>
-                        setBusca(
+                        setBuscaCliente(
                             e.target.value
                         )
                     }
-                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72" />
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72"
+                />
+
+                <input
+                    type="text"
+                    placeholder="Buscar cliente por celular"
+                    value={buscaCelular}
+                    onChange={(e) =>
+                        setBuscaCelular(
+                            e.target.value
+                        )
+                    }
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm w-72"
+                />
 
                 <select
                     value={filtroAnalista}
@@ -419,37 +435,19 @@ export default function Atendimento() {
 
                 </select>
 
-                <select
-                    value={filtroStatusAtendimento}
-                    onChange={(e) =>
-                        setFiltroStatusAtendimento(e.target.value)
-                    }
-                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+                <button
+                    onClick={() => {
+                        setPagina(1);
+
+                        setBuscaClienteAplicada(buscaCliente);
+                        setBuscaCelularAplicada(buscaCelular);
+
+                        setFiltroAnalistaAplicado(filtroAnalista);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-emerald-700 text-white font-medium shadow-sm hover:bg-emerald-800 cursor-pointer"
                 >
-                    <option value="">
-                        Todos status
-                    </option>
-
-                    <option value="Aberto">
-                        Aberto
-                    </option>
-
-                    <option value="Fila de Atendimento">
-                        Fila de atendimento
-                    </option>
-
-                    <option value="Em atendimento">
-                        Em atendimento
-                    </option>
-
-                    <option value="Aguardando">
-                        Aguardando
-                    </option>
-
-                    <option value="Finalizado">
-                        Finalizado
-                    </option>
-                </select>
+                    Buscar
+                </button>
 
             </div>
 
@@ -516,44 +514,7 @@ export default function Atendimento() {
                                         {item.cliente}
                                     </td>
 
-                                    <td className="text-center">
-
-                                        <select
-                                            value={item.status_do_atendimento || ""}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onChange={(e) =>
-                                                atualizarAtendimento(
-                                                    item.id,
-                                                    "status_do_atendimento",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded px-2 py-1 bg-white"
-                                        >
-
-                                            <option value="Aberto">
-                                                Aberto
-                                            </option>
-
-                                            <option value="Fila de Atendimento">
-                                                Fila de atendimento
-                                            </option>
-
-                                            <option value="Em atendimento">
-                                                Em atendimento
-                                            </option>
-
-                                            <option value="Aguardando">
-                                                Aguardando
-                                            </option>
-
-                                            <option value="Finalizado">
-                                                Finalizado
-                                            </option>
-
-                                        </select>
-
-                                    </td>
+                                    <td>{item.status_do_atendimento}</td>
 
                                     <td className="text-center">
                                         {calcularTempoTotal(item)}
@@ -568,38 +529,7 @@ export default function Atendimento() {
                                         {calcularTempoAtendimento(item)}
                                     </td>
 
-                                    <td className="text-center">
-
-                                        <select
-                                            value={String(item.id_analista_atual || "")}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onChange={(e) =>
-                                                atualizarAnalista(
-                                                    item.id,
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded px-2 py-1 bg-white"
-                                        >
-
-                                            <option value="">
-                                                Selecione
-                                            </option>
-
-                                            {analistas.map((analista) => (
-
-                                                <option
-                                                    key={analista.user_id_chatguru}
-                                                    value={String(analista.user_id_chatguru)}
-                                                >
-                                                    {analista.user_name}
-                                                </option>
-
-                                            ))}
-
-                                        </select>
-
-                                    </td>
+                                    <td>{item.analista_responsavel_atual}</td>
 
                                     <td className="text-center">
                                         {item.ticket_jira || "-"}
@@ -649,6 +579,8 @@ export default function Atendimento() {
                                                     </a>
                                                 </div>
 
+
+
                                             </div>
                                         </td>
                                     </tr>
@@ -662,6 +594,66 @@ export default function Atendimento() {
                 </table>
 
 
+            </div>
+
+            <div className="flex justify-end items-center gap-3 p-4">
+                <button
+                    disabled={pagina === 1}
+                    onClick={() => setPagina((prev) => prev - 1)}
+                    className="
+            px-4 py-2
+            rounded-lg
+            bg-emerald-700
+            text-white
+            font-medium
+            shadow-sm
+            hover:bg-emerald-800
+            cursor-pointer
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+        "
+                >
+                    Anterior
+                </button>
+
+                <select
+                    value={pagina}
+                    onChange={(e) => setPagina(Number(e.target.value))}
+                    className="
+            border border-emerald-700
+            rounded-lg
+            px-3 py-2
+            text-black
+            bg-white
+            cursor-pointer
+            shadow-sm
+        "
+                >
+                    {Array.from({ length: totalPaginas }, (_, index) => (
+                        <option key={index + 1} value={index + 1}>
+                            Página {index + 1}
+                        </option>
+                    ))}
+                </select>
+
+                <button
+                    disabled={pagina === totalPaginas}
+                    onClick={() => setPagina((prev) => prev + 1)}
+                    className="
+            px-4 py-2
+            rounded-lg
+            bg-emerald-700
+            text-white
+            font-medium
+            shadow-sm
+            hover:bg-emerald-800
+            cursor-pointer
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+        "
+                >
+                    Próxima
+                </button>
             </div>
 
         </div>
