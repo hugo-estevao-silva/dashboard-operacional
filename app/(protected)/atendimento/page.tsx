@@ -18,6 +18,7 @@ export default function Atendimento() {
     const [filtroAnalista, setFiltroAnalista] = useState("");
     const [filtroStatusAtendimento, setFiltroStatusAtendimento] = useState("");
     const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
+    const [disponibilidadePorDepartamento, setDisponibilidadePorDepartamento] = useState<any>({});
 
     // ======================
     // CALCULAR TEMPO
@@ -216,6 +217,61 @@ export default function Atendimento() {
             console.log("Atendimentos carregados:", data?.length);
         }
 
+        async function buscarDisponibilidadeDepartamentos() {
+            const { data, error } = await supabase
+                .from("userChatguru")
+                .select(`
+            user_status,
+            user_department,
+            service_max_count,
+            in_progress_chats_count
+        `)
+                .eq("user_status", "Disponível");
+
+            if (error) {
+                console.error("Erro ao buscar disponibilidade:", error);
+                return;
+            }
+
+            console.log("Usuários disponíveis:", data);
+
+            const disponibilidade = (data || []).reduce((acc: any, usuario: any) => {
+                const capacidade = Number(usuario.service_max_count || 0);
+                const emAtendimento = Number(usuario.in_progress_chats_count || 0);
+                const livre = Math.max(0, capacidade - emAtendimento);
+
+
+
+                if (!usuario.user_department) {
+                    return acc;
+                }
+
+                const departamentos = String(usuario.user_department)
+                    .split(",")
+                    .map((dep) => dep.trim())
+                    .filter(Boolean);
+
+                departamentos.forEach((departamento) => {
+                    acc[departamento] = (acc[departamento] || 0) + livre;
+                });
+
+                console.log("Usuário disponibilidade:", {
+                    nome: usuario.user_name,
+                    status: usuario.user_status,
+                    departamentos: usuario.user_department,
+                    capacidade: usuario.service_max_count,
+                    emAtendimento: usuario.in_progress_chats_count,
+                    livre
+                });
+
+                return acc;
+            }, {});
+
+            console.log("Disponibilidade por departamento:", disponibilidade);
+
+            setDisponibilidadePorDepartamento(disponibilidade);
+        }
+
         async function buscarAnalistas() {
 
             const { data, error } = await supabase
@@ -233,13 +289,14 @@ export default function Atendimento() {
 
         // primeira carga
         carregar();
-
         buscarAnalistas();
+        buscarDisponibilidadeDepartamentos();
 
         // atualização automática
         const interval = setInterval(() => {
 
             carregar();
+            buscarDisponibilidadeDepartamentos();
 
         }, 5000);
 
@@ -361,6 +418,25 @@ export default function Atendimento() {
     }
 
 
+    const atendimentosNaFila = atendimentos.filter(
+        (item) => item.status_do_atendimento === "Fila de Atendimento"
+    );
+
+    const totalNaFila = atendimentosNaFila.length;
+
+    const filaPorMotivo = atendimentosNaFila.reduce((acc: any, item: any) => {
+        const motivo = item.motivo || "Sem motivo";
+
+        acc[motivo] = (acc[motivo] || 0) + 1;
+
+        return acc;
+    }, {});
+
+    const disponibilidadeTotal = Object.values(
+        disponibilidadePorDepartamento
+    ).reduce((total: number, valor: any) => total + Number(valor || 0), 0);
+
+
     // ======================
     // TELA
     // ======================
@@ -373,7 +449,75 @@ export default function Atendimento() {
                     Atendimentos
                 </h1>
             </div>
+            <div>
+                <div className="mb-6 grid grid-cols-1 lg:grid-cols-4 gap-4">
 
+                    {/* CARD CLIENTES NA FILA */}
+                    <div className="bg-white border border-emerald-300 rounded-2xl shadow-sm p-6">
+                        <p className="text-gray-600 text-sm">
+                            Clientes na fila
+                        </p>
+
+                        <p className="text-4xl font-bold text-emerald-700 mt-2">
+                            {totalNaFila}
+                        </p>
+
+                        <div className="mt-4 space-y-1 text-sm text-gray-700">
+                            {Object.entries(filaPorMotivo).length === 0 ? (
+                                <p>Nenhum cliente na fila</p>
+                            ) : (
+                                Object.entries(filaPorMotivo).map(([motivo, quantidade]) => (
+                                    <p key={motivo}>
+                                        {motivo}: {String(quantidade)}
+                                    </p>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* CARD DISPONIBILIDADE */}
+                    <div className="lg:col-span-3">
+                        <div className="bg-white border border-emerald-300 rounded-2xl shadow-sm p-4">
+                            <p className="text-gray-600 text-sm mb-3">
+                                Disponibilidade por departamento
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-1 text-sm">
+                                {Object.entries(disponibilidadePorDepartamento)
+                                    .map(([departamento, quantidade]) => (
+                                        <div
+                                            key={departamento}
+                                            className="flex items-center justify-between py-1"
+                                        >
+                                            <span className="text-gray-700 whitespace-nowrap">
+                                                {departamento}
+                                            </span>
+
+                                            <span
+                                                className={` font-bold ml-4 ${Number(quantidade) === 0
+                                                        ? "text-red-600"
+                                                        : Number(quantidade) <= 2
+                                                            ? "text-yellow-600"
+                                                            : "text-emerald-700"
+                                                    }
+    `}
+                                            >
+                                                {String(quantidade)}
+                                            </span>
+
+
+
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+            </div>
 
             <div className="mb-6 flex items-center gap-4">
                 <input
