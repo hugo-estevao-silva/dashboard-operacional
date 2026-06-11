@@ -32,17 +32,21 @@ export default function UsersPage() {
     ...new Set(users.map((u) => u.nome_do_gestor).filter(Boolean)),
   ].sort();
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.user_name.toLowerCase().includes(search.toLowerCase()) ||
-      user.user_email.toLowerCase().includes(search.toLowerCase());
+  const filteredUsers = users
+    .filter((user) => {
+      const matchesSearch =
+        user.user_name.toLowerCase().includes(search.toLowerCase()) ||
+        user.user_email.toLowerCase().includes(search.toLowerCase());
 
-    const matchesManager =
-      managerFilter === "" ||
-      user.nome_do_gestor === managerFilter;
+      const matchesManager =
+        managerFilter === "" ||
+        user.nome_do_gestor === managerFilter;
 
-    return matchesSearch && matchesManager;
-  });
+      return matchesSearch && matchesManager;
+    })
+    .sort((a, b) =>
+      a.user_name.localeCompare(b.user_name, "pt-BR")
+    );
 
 
   async function fetchUsers() {
@@ -51,7 +55,7 @@ export default function UsersPage() {
     const { data, error } = await supabase
       .from("userChatguru")
       .select("*")
-      .order("created", { ascending: false });
+      .order("user_name", { ascending: true });
 
     if (!error && data) {
       setUsers(data);
@@ -150,12 +154,12 @@ export default function UsersPage() {
 
           <thead className="bg-emerald-700 text-white">
             <tr>
-              <th className="p-3 text-left">Nome</th>
-              <th className="p-3 text-left">Email</th>
-              <th className="p-3 text-left">Departamento</th>
-              <th className="p-3 text-left">Gestor</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Ações</th>
+              <th className="w-[23%] text-left px-5 py-4">Nome</th>
+              <th className="w-[23%] text-left px-5 py-4">Email</th>
+              <th className="w-[18%] text-left px-5 py-4">Departamento</th>
+              <th className="w-[16%] text-left px-5 py-4">Gestor</th>
+              <th className="w-[10%] text-left px-5 py-4">Status</th>
+              <th className="w-[10%] text-center px-5 py-4">Ações</th>
             </tr>
           </thead>
 

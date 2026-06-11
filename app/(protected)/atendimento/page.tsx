@@ -337,10 +337,18 @@ export default function Atendimento() {
                     ?.toString()
                     .includes(busca);
 
+            const semAnalista =
+                item.id_analista_atual === null ||
+                item.id_analista_atual === undefined ||
+                item.id_analista_atual === "";
+
             const analistaMatch =
-                !filtroAnalista ||
-                String(item.id_analista_atual) ===
-                String(filtroAnalista);
+                !filtroAnalista
+                    ? true
+                    : filtroAnalista === "SEM_ANALISTA"
+                        ? semAnalista
+                        : String(item.id_analista_atual) ===
+                        String(filtroAnalista);
 
             const statusMatch =
                 !filtroStatusAtendimento ||
@@ -495,10 +503,10 @@ export default function Atendimento() {
 
                                             <span
                                                 className={` font-bold ml-4 ${Number(quantidade) === 0
-                                                        ? "text-red-600"
-                                                        : Number(quantidade) <= 2
-                                                            ? "text-yellow-600"
-                                                            : "text-emerald-700"
+                                                    ? "text-red-600"
+                                                    : Number(quantidade) <= 2
+                                                        ? "text-yellow-600"
+                                                        : "text-emerald-700"
                                                     }
     `}
                                             >
@@ -550,7 +558,13 @@ export default function Atendimento() {
                         Todos os analistas
                     </option>
 
+                    <option value="SEM_ANALISTA">
+                        Sem analista
+                    </option>
+
                     {analistas.map((analista) => (
+
+
 
                         <option
                             key={analista.user_id_chatguru}
@@ -590,9 +604,6 @@ export default function Atendimento() {
                         Aguardando
                     </option>
 
-                    <option value="Finalizado">
-                        Finalizado
-                    </option>
                 </select>
 
             </div>
@@ -606,33 +617,33 @@ export default function Atendimento() {
             "
             >
 
-                <table className="w-full">
+                <table className="w-full table-fixed">
 
                     <thead className="bg-emerald-700 text-white">
 
                         <tr>
 
-                            <th className="text-left px-5 py-4">
+                            <th className="w-[30%] text-left px-5 py-4">
                                 Cliente
                             </th>
 
-                            <th className="text-center px-5 py-4">
+                            <th className="w-[12%] text-center px-5 py-4">
                                 Status
                             </th>
 
-                            <th className="text-center px-5 py-4">
+                            <th className="w-[10%] text-center px-5 py-4">
                                 Tempo Total
                             </th>
 
-                            <th className="text-center px-5 py-4">
+                            <th className="w-[12%] text-center px-5 py-4">
                                 Tempo Atendimento
                             </th>
 
-                            <th className="text-center px-5 py-4">
+                            <th className="w-[26%] text-center px-5 py-4">
                                 Analista
                             </th>
 
-                            <th className="text-center px-5 py-4">
+                            <th className="w-[10%] text-center px-5 py-4">
                                 Ticket
                             </th>
 
