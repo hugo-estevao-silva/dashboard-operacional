@@ -19,11 +19,13 @@ const departmentOptions = [
   "N1 Dúvidas",
   "N1 Quarentena",
   "N1 Financeiro",
+  "Ativação WABA",
+  "Noturno",
   "Escalation Premium",
   "Escalation Problemas",
   "Escalation Dúvidas",
   "Escalation ChatBot",
-  "Escalation WhatsApp",
+  "Escalation Whatsapp",
 ];
 
 
