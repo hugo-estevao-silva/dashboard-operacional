@@ -324,6 +324,43 @@ export default function Home() {
     return "bg-gray-100 text-gray-700";
   }
 
+
+
+  async function redistribuirChats(usuario: any) {
+    const confirmado = confirm(
+      `Deseja redistribuir os chats de ${usuario.user_name}?`
+    );
+
+    if (!confirmado) return;
+
+    try {
+      const response = await fetch(
+        "https://atendimento.chatguru.com.br/webhook/redistruibuicao-chats-dashboard",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            user_email: usuario.user_email,
+            user_name: usuario.user_name,
+            user_id_chatguru: usuario.user_id_chatguru
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao chamar webhook");
+      }
+
+      alert("Redistribuição solicitada com sucesso!");
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao solicitar redistribuição dos chats");
+    }
+  }
+
+
   const totalDisponiveis = usuarios.filter(
     (u) => u.user_status === "Disponível"
   ).length;
@@ -721,6 +758,10 @@ export default function Home() {
                   Aguardando
                 </th>
 
+                <th className="text-center p-4 font-bold">
+                  Ações
+                </th>
+
               </tr>
 
             </thead>
@@ -823,6 +864,15 @@ export default function Home() {
 
                   <td className="text-center p-4">
                     {usuario.pending_chats_count}
+                  </td>
+
+                  <td className="text-center p-4">
+                    <button
+                      onClick={() => redistribuirChats(usuario)}
+                      className="bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-800 cursor-pointer"
+                    >
+                      Redistribuir
+                    </button>
                   </td>
 
                 </tr>
