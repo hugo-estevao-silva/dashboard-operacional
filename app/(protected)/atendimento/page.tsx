@@ -19,6 +19,7 @@ export default function Atendimento() {
     const [filtroStatusAtendimento, setFiltroStatusAtendimento] = useState("");
     const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
     const [disponibilidadePorDepartamento, setDisponibilidadePorDepartamento] = useState<any>({});
+    const [filtroMotivo, setFiltroMotivo] = useState("");
 
     // ======================
     // CALCULAR TEMPO
@@ -354,10 +355,15 @@ export default function Atendimento() {
                 !filtroStatusAtendimento ||
                 item.status_do_atendimento === filtroStatusAtendimento;
 
+            const motivoMatch =
+                !filtroMotivo ||
+                item.motivo === filtroMotivo;
+
             return (
                 (nomeMatch || celularMatch) &&
                 analistaMatch &&
-                statusMatch
+                statusMatch &&
+                motivoMatch
             );
         });
 
@@ -444,6 +450,13 @@ export default function Atendimento() {
         disponibilidadePorDepartamento
     ).reduce((total: number, valor: any) => total + Number(valor || 0), 0);
 
+    const motivos: string[] = [
+        ...new Set(
+            atendimentos
+                .map((item) => String(item.motivo || "").trim())
+                .filter(Boolean)
+        ),
+    ].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
     // ======================
     // TELA
@@ -604,6 +617,29 @@ export default function Atendimento() {
                         Aguardando
                     </option>
 
+                </select>
+
+                <select
+                    value={filtroMotivo}
+                    onChange={(e) => setFiltroMotivo(e.target.value)}
+                    className="
+        border border-gray-300
+        rounded-lg
+        px-4 py-2
+        text-black
+        bg-white
+        shadow-sm
+    "
+                >
+                    <option value="">
+                        Todos os motivos
+                    </option>
+
+                    {motivos.map((motivo) => (
+                        <option key={motivo} value={motivo}>
+                            {motivo}
+                        </option>
+                    ))}
                 </select>
 
             </div>
