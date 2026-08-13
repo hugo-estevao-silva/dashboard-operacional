@@ -178,7 +178,7 @@ export default function Atendimento() {
         }
 
         // POST PARA WEBHOOK
-        await fetch("https://atendimento.chatguru.com.br/webhook/dashboard-atendimento-troca-analista", {
+        await fetch("/api/atendimento", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -449,8 +449,7 @@ export default function Atendimento() {
                 atendimentoAtual.status_do_atendimento;
 
             try {
-                const response = await fetch(
-                    "https://atendimento.chatguru.com.br/webhook/dashboard-atendimento-troca-analista",
+                const response = await fetch("/api/atendimento",
                     {
                         method: "POST",
                         headers: {
