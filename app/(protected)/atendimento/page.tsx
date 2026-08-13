@@ -119,6 +119,27 @@ export default function Atendimento() {
         return "";
     }
 
+    function formatarDataHora(data: string | null | undefined) {
+        if (!data) {
+            return "";
+        }
+
+        const dataFormatada = new Date(data);
+
+        if (isNaN(dataFormatada.getTime())) {
+            return "";
+        }
+
+        return dataFormatada.toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+    }
+
 
     async function atualizarAnalista(
         atendimentoId: number,
@@ -355,9 +376,14 @@ export default function Atendimento() {
                 !filtroStatusAtendimento ||
                 item.status_do_atendimento === filtroStatusAtendimento;
 
+            const motivosDoAtendimento = String(item.motivo || "")
+                .split(",")
+                .map((motivo) => motivo.trim())
+                .filter(Boolean);
+
             const motivoMatch =
                 !filtroMotivo ||
-                item.motivo === filtroMotivo;
+                motivosDoAtendimento.includes(filtroMotivo);
 
             return (
                 (nomeMatch || celularMatch) &&
@@ -404,6 +430,88 @@ export default function Atendimento() {
         campo: string,
         valor: string
     ) {
+        const atendimentoAtual = atendimentos.find(
+            (item) => item.id === id
+        );
+
+        if (!atendimentoAtual) {
+            alert("Atendimento não encontrado.");
+            return;
+        }
+
+        // ==========================================
+        // TROCA DE STATUS
+        // ==========================================
+
+        if (campo === "status_do_atendimento") {
+
+            const statusAnterior =
+                atendimentoAtual.status_do_atendimento;
+
+            try {
+                const response = await fetch(
+                    "https://atendimento.chatguru.com.br/webhook/dashboard-atendimento-troca-analista",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            atendimento_id:
+                                atendimentoAtual.id,
+
+                            chat_id:
+                                atendimentoAtual.chat_id,
+
+                            celular:
+                                atendimentoAtual.celular,
+
+                            cliente:
+                                atendimentoAtual.cliente,
+
+                            id_analista_atual:
+                                atendimentoAtual.id_analista_atual,
+
+                            analista_responsavel_atual:
+                                atendimentoAtual.analista_responsavel_atual,
+
+                            status_anterior:
+                                statusAnterior,
+
+                            status_novo:
+                                valor,
+
+                            evento:
+                                "troca_status"
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Webhook retornou status ${response.status}`
+                    );
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao alterar status:",
+                    error
+                );
+
+                alert(
+                    "Não foi possível alterar o status do atendimento. Tente novamente."
+                );
+
+                return;
+            }
+        }
+
+        // ==========================================
+        // ATUALIZA SUPABASE
+        // ==========================================
 
         const { error } = await supabase
             .from("atendimento")
@@ -413,12 +521,22 @@ export default function Atendimento() {
             .eq("id", id);
 
         if (error) {
-            console.error(error);
-            alert("Erro ao atualizar atendimento");
+            console.error(
+                "Erro ao atualizar atendimento:",
+                error
+            );
+
+            alert(
+                "Erro ao atualizar atendimento no banco de dados."
+            );
+
             return;
         }
 
-        // Atualiza a lista local
+        // ==========================================
+        // ATUALIZA TELA
+        // ==========================================
+
         setAtendimentos((prev) =>
             prev.map((item) =>
                 item.id === id
@@ -453,8 +571,12 @@ export default function Atendimento() {
     const motivos: string[] = [
         ...new Set(
             atendimentos
-                .map((item) => String(item.motivo || "").trim())
-                .filter(Boolean)
+                .flatMap((item) =>
+                    String(item.motivo || "")
+                        .split(",")
+                        .map((motivo) => motivo.trim())
+                        .filter(Boolean)
+                )
         ),
     ].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
@@ -649,11 +771,11 @@ export default function Atendimento() {
             bg-white
             rounded-2xl
             shadow-md
-            overflow-hidden
+            overflow-x-auto
             "
             >
 
-                <table className="w-full table-fixed">
+                <table className="w-full min-w-[1200px] table-fixed">
 
                     <thead className="bg-emerald-700 text-white">
 
@@ -661,6 +783,10 @@ export default function Atendimento() {
 
                             <th className="w-[30%] text-left px-5 py-4">
                                 Cliente
+                            </th>
+
+                            <th className="w-[14%] text-left px-5 py-4">
+                                Celular
                             </th>
 
                             <th className="w-[12%] text-center px-5 py-4">
@@ -677,10 +803,6 @@ export default function Atendimento() {
 
                             <th className="w-[26%] text-center px-5 py-4">
                                 Analista
-                            </th>
-
-                            <th className="w-[10%] text-center px-5 py-4">
-                                Ticket
                             </th>
 
                         </tr>
@@ -707,6 +829,10 @@ export default function Atendimento() {
                                         {item.cliente}
                                     </td>
 
+                                    <td className="px-5 py-4">
+                                        {item.celular || "-"}
+                                    </td>
+
                                     <td className="text-center">
 
                                         <select
@@ -719,7 +845,7 @@ export default function Atendimento() {
                                                     e.target.value
                                                 )
                                             }
-                                            className="border rounded px-2 py-1 bg-white"
+                                            className="border rounded px-2 py-1 bg-white max-w-full"
                                         >
 
                                             <option value="Aberto">
@@ -770,7 +896,7 @@ export default function Atendimento() {
                                                     e.target.value
                                                 )
                                             }
-                                            className="border rounded px-2 py-1 bg-white"
+                                            className="border rounded px-2 py-1 bg-white max-w-full"
                                         >
 
                                             <option value="">
@@ -792,10 +918,6 @@ export default function Atendimento() {
 
                                     </td>
 
-                                    <td className="text-center">
-                                        {item.ticket_jira || "-"}
-                                    </td>
-
                                 </tr>
 
                                 {expandido === item.id && (
@@ -807,10 +929,6 @@ export default function Atendimento() {
 
                                                 <div>
                                                     <b>ID:</b> {item.id}
-                                                </div>
-
-                                                <div>
-                                                    <b>Celular:</b> {item.celular}
                                                 </div>
 
                                                 <div>
@@ -826,7 +944,7 @@ export default function Atendimento() {
                                                 </div>
 
                                                 <div>
-                                                    <b>Fila:</b> {item.hora_inicio_fila}
+                                                    <b>Fila:</b> {formatarDataHora(item.hora_inicio_fila)}
                                                 </div>
 
                                                 <div>
@@ -838,6 +956,10 @@ export default function Atendimento() {
                                                     >
                                                         Abrir
                                                     </a>
+                                                </div>
+
+                                                <div>
+                                                    <b>Ticket:</b> {item.ticket_jira || "-"}
                                                 </div>
 
                                             </div>
