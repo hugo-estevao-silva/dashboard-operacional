@@ -20,6 +20,7 @@ export default function Atendimento() {
     const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
     const [disponibilidadePorDepartamento, setDisponibilidadePorDepartamento] = useState<any>({});
     const [filtroMotivo, setFiltroMotivo] = useState("");
+    const [usuarioLogado, setUsuarioLogado] = useState<{ nome: string; email: string; } | null>(null);
 
     // ======================
     // CALCULAR TEMPO
@@ -187,11 +188,21 @@ export default function Atendimento() {
                 atendimento_id: atendimentoId,
                 chat_id: atendimentoAtual?.chat_id,
                 celular: atendimentoAtual?.celular,
+
                 id_analista_atual:
                     analistaSelecionado.user_id_chatguru,
+
                 analista_responsavel_atual:
                     analistaSelecionado.user_name,
-                evento: "troca_analista"
+
+                alterado_por_nome:
+                    usuarioLogado?.nome,
+
+                alterado_por_email:
+                    usuarioLogado?.email,
+
+                evento:
+                    "troca_analista"
             })
         });
 
@@ -218,6 +229,31 @@ export default function Atendimento() {
     // ======================
 
     useEffect(() => {
+
+        async function buscarUsuarioLogado() {
+            const {
+                data: { user },
+                error
+            } = await supabase.auth.getUser();
+
+            if (error || !user) {
+                console.error("Erro ao identificar usuário logado:", error);
+                return;
+            }
+
+            const email = user.email || "";
+
+            const { data: usuarioSistema } = await supabase
+                .from("userChatguru")
+                .select("user_name, user_email")
+                .eq("user_email", email)
+                .maybeSingle();
+
+            setUsuarioLogado({
+                nome: usuarioSistema?.user_name || email,
+                email: email
+            });
+        }
 
         async function carregar(): Promise<void> {
 
@@ -313,6 +349,7 @@ export default function Atendimento() {
         carregar();
         buscarAnalistas();
         buscarDisponibilidadeDepartamentos();
+        buscarUsuarioLogado();
 
         // atualização automática
         const interval = setInterval(() => {
@@ -480,6 +517,12 @@ export default function Atendimento() {
 
                             status_novo:
                                 valor,
+
+                            alterado_por_nome:
+                                usuarioLogado?.nome,
+
+                            alterado_por_email:
+                                usuarioLogado?.email,
 
                             evento:
                                 "troca_status"
