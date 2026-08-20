@@ -872,7 +872,19 @@ export default function Atendimento() {
                                     </td>
 
                                     <td className="px-5 py-4">
-                                        {item.celular || "-"}
+                                        {item.link_do_chat ? (
+                                            <a
+                                                href={item.link_do_chat}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-black hover:underline cursor-pointer"
+                                            >
+                                                {item.celular || "-"}
+                                            </a>
+                                        ) : (
+                                            item.celular || "-"
+                                        )}
                                     </td>
 
                                     <td className="text-center">
@@ -987,17 +999,6 @@ export default function Atendimento() {
 
                                                 <div>
                                                     <b>Fila:</b> {formatarDataHora(item.hora_inicio_fila)}
-                                                </div>
-
-                                                <div>
-                                                    <b>Chat:</b>{" "}
-                                                    <a
-                                                        href={item.link_do_chat}
-                                                        target="_blank"
-                                                        className="text-blue-600 underline ml-2"
-                                                    >
-                                                        Abrir
-                                                    </a>
                                                 </div>
 
                                                 <div>
