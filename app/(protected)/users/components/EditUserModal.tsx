@@ -32,6 +32,7 @@ const departmentOptions = [
   "Escalation Dúvidas",
   "Escalation ChatBot",
   "Escalation Whatsapp",
+  "Teste de Timer",
 ];
 
 export default function EditUserModal({
@@ -101,7 +102,7 @@ export default function EditUserModal({
         gestor_user_id: user.gestor_user_id || "",
         work_start_time: user.work_start_time || "",
         work_end_time: user.work_end_time || "",
-        service_max_count: String(user.service_max_count || ""),
+        service_max_count: String(user.service_max_count ?? ""),
       });
     }
   }, [user]);
@@ -161,11 +162,6 @@ export default function EditUserModal({
       return;
     }
 
-    if (form.user_department.length === 0) {
-      alert("Selecione pelo menos um Departamento");
-      return;
-    }
-
     if (!form.gestor_user_id.trim()) {
       alert("Selecione um gestor");
       return;
@@ -181,8 +177,14 @@ export default function EditUserModal({
       return;
     }
 
-    if (!form.service_max_count) {
+    if (form.service_max_count.trim() === "") {
       alert("Informe o limite de chats simultâneos");
+      return;
+    }
+
+    const serviceMaxCount = Number(form.service_max_count);
+    if (!Number.isSafeInteger(serviceMaxCount) || serviceMaxCount < 0) {
+      alert("Informe um limite de chats inteiro maior ou igual a 0" );
       return;
     }
 
@@ -207,10 +209,7 @@ export default function EditUserModal({
           work_start_time: form.work_start_time,
           work_end_time: form.work_end_time,
 
-          service_max_count: Math.max(
-            0,
-            Number(form.service_max_count)
-          ),
+          service_max_count: serviceMaxCount,
         })
         .eq("id", user.id);
 
@@ -302,7 +301,7 @@ export default function EditUserModal({
 
           <div>
             <label className="font-medium text-black">
-              Departamento
+              Departamento (opcional)
             </label>
 
             <div className="grid grid-cols-2 gap-2 mt-2">

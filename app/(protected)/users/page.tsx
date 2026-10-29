@@ -13,7 +13,7 @@ type User = {
   user_id_chatguru: string;
   user_name: string;
   user_email: string;
-  user_department: string;
+  user_department: string | null;
   nome_do_gestor: string;
   user_status: string;
 };
@@ -171,7 +171,7 @@ export default function UsersPage() {
               >
                 <td className="p-3 text-black">{user.user_name}</td>
                 <td className="p-3 text-black">{user.user_email}</td>
-                <td className="p-3 text-black">{user.user_department}</td>
+                <td className="p-3 text-black">{user.user_department || "Sem departamento"}</td>
                 <td className="p-3 text-black">{user.nome_do_gestor}</td>
 
                 <td className="p-3 text-black">{user.user_status}</td>

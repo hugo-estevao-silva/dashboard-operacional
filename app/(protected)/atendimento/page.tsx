@@ -173,8 +173,20 @@ export default function Atendimento() {
             .select();
 
         if (error) {
-            console.error(error);
-            alert("Erro ao atualizar analista");
+            console.error("Erro completo ao atualizar analista:", {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+
+            alert(
+                `Erro ao atualizar analista:\n\n` +
+                `Mensagem: ${error.message}\n` +
+                `Código: ${error.code || "-"}\n` +
+                `Detalhes: ${error.details || "-"}`
+            );
+
             return;
         }
 
