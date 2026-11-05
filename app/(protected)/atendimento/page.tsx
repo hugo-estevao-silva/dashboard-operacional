@@ -570,7 +570,10 @@ export default function Atendimento() {
         const { error } = await supabase
             .from("atendimento")
             .update({
-                [campo]: valor
+                [campo]: valor,
+                ...(campo === "status_do_atendimento" && valor === "Finalizado"
+                    ? { fechado_pelo_dashboard: true }
+                    : {})
             })
             .eq("id", id);
 
