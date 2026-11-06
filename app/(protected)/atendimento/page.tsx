@@ -20,6 +20,7 @@ export default function Atendimento() {
     const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
     const [disponibilidadePorDepartamento, setDisponibilidadePorDepartamento] = useState<any>({});
     const [filtroMotivo, setFiltroMotivo] = useState("");
+    const [filtroPhoneId, setFiltroPhoneId] = useState("");
     const [usuarioLogado, setUsuarioLogado] = useState<{ nome: string; email: string; } | null>(null);
 
     // ======================
@@ -434,11 +435,14 @@ export default function Atendimento() {
                 !filtroMotivo ||
                 motivosDoAtendimento.includes(filtroMotivo);
 
+            const numeroMatch = !filtroPhoneId || item.phone_id === filtroPhoneId;
+
             return (
                 (nomeMatch || celularMatch) &&
                 analistaMatch &&
                 statusMatch &&
-                motivoMatch
+                motivoMatch &&
+                numeroMatch
             );
         });
 
@@ -719,7 +723,7 @@ export default function Atendimento() {
 
             </div>
 
-            <div className="mb-6 flex items-center gap-4">
+            <div className="mb-6 flex items-center gap-4 overflow-x-auto -mx-1 px-1 py-1">
                 <input
                     type="text"
                     placeholder="Buscar cliente por nome ou número..."
@@ -819,6 +823,18 @@ export default function Atendimento() {
                             {motivo}
                         </option>
                     ))}
+                </select>
+
+                <select
+                    aria-label="Número do atendimento"
+                    value={filtroPhoneId}
+                    onChange={(e) => setFiltroPhoneId(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-black bg-white shadow-sm"
+                >
+                    <option value="">Todos os Phones</option>
+                    <option value="69df7d4a94162b3a569a5ae5">Suporte</option>
+                    <option value="69fa5d33a90ac0e605bb893c">Escalation</option>
+                    <option value="6acfd6303c4aa6fc2647eb0d">Ativação WABA</option>
                 </select>
 
             </div>
